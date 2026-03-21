@@ -31,7 +31,6 @@ const CreateListing = () => {
     setLoading(true);
 
     try {
-      // Insert publicacion
       const { data: pub, error: pubError } = await supabase.from("publicaciones").insert({
         marca: form.marca,
         modelo: form.modelo,
@@ -47,7 +46,6 @@ const CreateListing = () => {
 
       if (pubError) throw pubError;
 
-      // Save images
       if (imageUrls.length > 0 && pub) {
         await supabase.from("imagenes_publicacion").insert({
           publicacion_id: String(pub.id),
@@ -55,7 +53,6 @@ const CreateListing = () => {
         });
       }
 
-      // Call AI assessment
       if (pub) {
         try {
           const { data: aiData } = await supabase.functions.invoke("assess-vehicle", {
@@ -68,7 +65,6 @@ const CreateListing = () => {
               descripcion: form.descripcion || "",
             },
           });
-          // Update the publicacion with AI results
           if (aiData?.estado) {
             await supabase.from("publicaciones").update({
               estado_vehiculo: aiData.estado,
@@ -76,7 +72,6 @@ const CreateListing = () => {
             }).eq("id", pub.id);
           }
         } catch {
-          // AI assessment is non-critical
           console.warn("AI assessment failed, continuing...");
         }
       }
@@ -94,9 +89,9 @@ const CreateListing = () => {
 
   return (
     <div className="container max-w-2xl py-10">
-      <Card>
+      <Card className="border-0 shadow-lg">
         <CardHeader>
-          <CardTitle className="font-display text-2xl">Publicar Vehículo</CardTitle>
+          <CardTitle className="text-2xl tracking-tight">Publicar Vehículo</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -168,7 +163,7 @@ const CreateListing = () => {
               <ImageUpload userId={user.id} onImagesUploaded={setImageUrls} />
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full rounded-full active:scale-[0.98] transition-transform" disabled={loading}>
               {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publicando...</> : "Publicar Vehículo"}
             </Button>
           </form>
