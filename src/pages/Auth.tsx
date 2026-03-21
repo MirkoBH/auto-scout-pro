@@ -54,19 +54,19 @@ const Auth = () => {
       <div className="w-full max-w-md">
         <div className="flex items-center justify-center gap-2 mb-8">
           <Car className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-display font-bold text-foreground">AutoMarket</h1>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">AutoMarket</h1>
         </div>
 
         <Tabs defaultValue="login" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
-            <TabsTrigger value="register">Registrarse</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 rounded-full p-1">
+            <TabsTrigger value="login" className="rounded-full">Iniciar Sesión</TabsTrigger>
+            <TabsTrigger value="register" className="rounded-full">Registrarse</TabsTrigger>
           </TabsList>
 
           <TabsContent value="login">
-            <Card>
+            <Card className="border-0 shadow-lg">
               <CardHeader>
-                <CardTitle className="font-display">Iniciar Sesión</CardTitle>
+                <CardTitle>Iniciar Sesión</CardTitle>
                 <CardDescription>Ingresa a tu cuenta para continuar</CardDescription>
               </CardHeader>
               <CardContent>
@@ -79,7 +79,7 @@ const Auth = () => {
                     <Label htmlFor="login-password">Contraseña</Label>
                     <Input id="login-password" type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required />
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" className="w-full rounded-full active:scale-[0.98] transition-transform" disabled={loading}>
                     {loading ? "Cargando..." : "Iniciar Sesión"}
                   </Button>
                 </form>
@@ -88,9 +88,9 @@ const Auth = () => {
           </TabsContent>
 
           <TabsContent value="register">
-            <Card>
+            <Card className="border-0 shadow-lg">
               <CardHeader>
-                <CardTitle className="font-display">Crear Cuenta</CardTitle>
+                <CardTitle>Crear Cuenta</CardTitle>
                 <CardDescription>Elige tu tipo de cuenta</CardDescription>
               </CardHeader>
               <CardContent>
@@ -109,8 +109,8 @@ const Auth = () => {
                       <button
                         type="button"
                         onClick={() => setRegType("Buyer")}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
-                          regType === "Buyer" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
+                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all active:scale-[0.98] ${
+                          regType === "Buyer" ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-muted-foreground/30"
                         }`}
                       >
                         <ShoppingCart className={`h-6 w-6 ${regType === "Buyer" ? "text-primary" : "text-muted-foreground"}`} />
@@ -119,8 +119,8 @@ const Auth = () => {
                       <button
                         type="button"
                         onClick={() => setRegType("Seller")}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
-                          regType === "Seller" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
+                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all active:scale-[0.98] ${
+                          regType === "Seller" ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-muted-foreground/30"
                         }`}
                       >
                         <UserCheck className={`h-6 w-6 ${regType === "Seller" ? "text-primary" : "text-muted-foreground"}`} />
@@ -128,7 +128,7 @@ const Auth = () => {
                       </button>
                     </div>
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" className="w-full rounded-full active:scale-[0.98] transition-transform" disabled={loading}>
                     {loading ? "Cargando..." : "Crear Cuenta"}
                   </Button>
                 </form>

@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import VehicleCard from "@/components/VehicleCard";
 import VehicleFilters, { Filters } from "@/components/VehicleFilters";
-import { Car, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const emptyFilters: Filters = { search: "", marca: "", minPrecio: "", maxPrecio: "", anioMin: "", combustible: "", transmision: "" };
 
@@ -27,8 +28,25 @@ interface ImagenPublicacion {
   imagen_ids: string[];
 }
 
+const CardSkeleton = () => (
+  <div className="rounded-2xl overflow-hidden bg-card shadow-sm">
+    <Skeleton className="aspect-[4/3] w-full" />
+    <div className="p-4 space-y-3">
+      <div className="flex justify-between">
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="h-5 w-20" />
+      </div>
+      <div className="flex gap-3">
+        <Skeleton className="h-4 w-12" />
+        <Skeleton className="h-4 w-16" />
+        <Skeleton className="h-4 w-14" />
+      </div>
+    </div>
+  </div>
+);
+
 const Index = () => {
-  const { user, userType } = useAuth();
+  const { user } = useAuth();
   const [publicaciones, setPublicaciones] = useState<Publicacion[]>([]);
   const [imagenes, setImagenes] = useState<ImagenPublicacion[]>([]);
   const [filters, setFilters] = useState<Filters>(emptyFilters);
@@ -76,16 +94,17 @@ const Index = () => {
   return (
     <div className="min-h-screen">
       {/* Hero */}
-      <section className="relative bg-gradient-to-br from-primary/10 via-background to-accent/10 py-20 lg:py-28">
-        <div className="container text-center space-y-6">
-          <h1 className="font-display text-4xl md:text-6xl font-bold text-foreground leading-tight">
-            Encuentra tu próximo <span className="text-primary">auto ideal</span>
+      <section className="relative py-20 lg:py-28">
+        <div className="container text-center space-y-5">
+          <h1 className="text-4xl md:text-6xl font-bold text-foreground leading-tight tracking-tight">
+            Encuentra tu próximo<br />
+            <span className="text-primary">auto ideal</span>
           </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
             Compra y vende autos usados con evaluación inteligente de condición del vehículo.
           </p>
           {!user && (
-            <Button size="lg" asChild>
+            <Button size="lg" asChild className="rounded-full px-8 active:scale-[0.98] transition-transform">
               <Link to="/auth">Comienza ahora</Link>
             </Button>
           )}
@@ -93,12 +112,14 @@ const Index = () => {
       </section>
 
       {/* Filters + Grid */}
-      <section className="container py-10 space-y-6">
+      <section className="container pb-16 space-y-6">
         <VehicleFilters filters={filters} onChange={setFilters} onClear={() => setFilters(emptyFilters)} marcas={marcas} />
 
         {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 space-y-3">
@@ -107,12 +128,17 @@ const Index = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map(p => (
-              <VehicleCard
+            {filtered.map((p, i) => (
+              <div
                 key={p.id}
-                {...p}
-                imageUrl={imageMap[String(p.id)] || null}
-              />
+                className="animate-fade-in-up"
+                style={{ animationDelay: `${i * 60}ms`, animationFillMode: "both" }}
+              >
+                <VehicleCard
+                  {...p}
+                  imageUrl={imageMap[String(p.id)] || null}
+                />
+              </div>
             ))}
           </div>
         )}

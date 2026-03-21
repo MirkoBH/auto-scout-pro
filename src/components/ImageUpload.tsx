@@ -1,6 +1,5 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { ImagePlus, X, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -50,18 +49,18 @@ const ImageUpload = ({ userId, onImagesUploaded, existingUrls = [] }: Props) => 
     <div className="space-y-3">
       <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
         {urls.map((url, i) => (
-          <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-muted group">
+          <div key={i} className="relative aspect-square rounded-xl overflow-hidden bg-muted group ring-2 ring-primary/20">
             <img src={url} alt="" className="h-full w-full object-cover" />
             <button
               type="button"
               onClick={() => removeImage(i)}
-              className="absolute top-1 right-1 p-1 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-1.5 right-1.5 p-1 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
             >
               <X className="h-3 w-3" />
             </button>
           </div>
         ))}
-        <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors">
+        <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors">
           {uploading ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /> : <ImagePlus className="h-6 w-6 text-muted-foreground" />}
           <span className="text-xs text-muted-foreground mt-1">{uploading ? "Subiendo..." : "Agregar"}</span>
           <input type="file" accept="image/*" multiple className="hidden" onChange={handleUpload} disabled={uploading} />
