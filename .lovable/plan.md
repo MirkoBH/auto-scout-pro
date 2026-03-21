@@ -1,87 +1,84 @@
 
 
-# Plan: Plataforma Inteligente de Compra y Venta de Autos Usados
+# Plan: Rediseno Visual Apple HIG
 
 ## Overview
 
-Build a full car marketplace with authentication (Buyer/Seller roles), vehicle listings with image uploads, and simulated AI vehicle assessment. The app uses the existing Supabase tables (`app_users`, `publicaciones`, `imagenes_publicacion`).
+Aplicar la identidad visual Apple HIG completa: nueva paleta (#D32F45 primario, #F5F5F5 fondo, #000/#666 texto), glassmorphism en header, bordes redondeados 16px, skeleton loaders, filtros drawer en movil, hover scale en cards, y animaciones de entrada stagger.
 
-## Database Changes
+## Files to Modify
 
-### 1. Add `user_id` column to `publicaciones`
-- Add `user_id uuid REFERENCES auth.users(id)` to link listings to sellers
-- Add `estado_vehiculo` and `estimacion_danos` text columns for AI assessment results
+### 1. `src/index.css` - Nueva paleta de colores
+- Primario: `#D32F45` (rojo) en lugar del azul actual
+- Background: `#F5F5F5`, Cards: `#FFFFFF`
+- Texto: `#000000` titulos, `#666666` cuerpo
+- Border radius: `1rem` (16px)
+- Mantener dark mode con equivalentes oscuros
 
-### 2. Create storage bucket `vehiculos`
-- Public bucket for vehicle images
-- RLS: authenticated users can upload; public read access
+### 2. `tailwind.config.ts` - Radius y animaciones
+- Cambiar `--radius` a `1rem`
+- Agregar animaciones: `stagger-fade-in`, `scale-press` (0.98), `slide-up` para drawer
+- Agregar clase `.glass` para backdrop-blur
 
-### 3. Add RLS policies
-- `app_users`: users can read/update their own row
-- `publicaciones`: anyone can SELECT; only owner can INSERT/UPDATE/DELETE
-- `imagenes_publicacion`: same as publicaciones
+### 3. `src/components/Navbar.tsx` - Glassmorphism header
+- Fondo con `bg-white/70 backdrop-blur-xl` en lugar de `bg-card/80`
+- Bordes mas sutiles, efecto blur mas pronunciado
 
-## Pages & Components
+### 4. `src/components/VehicleCard.tsx` - Tarjetas Apple-style
+- Aspect ratio 4:3 en imagen
+- Hover `scale-[1.02]` con transicion suave
+- Sombras muy suaves, bordes 16px
+- Badge "Analizado por IA" con estilo refinado
+- Skeleton loader como placeholder
 
-### Authentication (`/auth`)
-- Login/Register form with email+password
-- On signup, user selects role (Comprador/Vendedor) which updates `app_users.type`
-- AuthProvider context wrapping the app
-- Protected routes for seller features
+### 5. `src/components/VehicleFilters.tsx` - Drawer en movil
+- Desktop: mantener layout horizontal
+- Movil: usar `Drawer` component (vaul) que sube desde abajo
+- Boton trigger con icono de filtros
+- Usar `useIsMobile()` hook existente
 
-### Home Page (`/`)
-- Hero section with search bar
-- Grid of vehicle cards showing image, brand, model, year, price, location
-- Filters: brand, price range, year, fuel type, transmission
+### 6. `src/pages/Index.tsx` - Hero y grid mejorados
+- Hero con gradiente sutil, tipografia mas grande
+- Grid con animacion stagger en cards (delay incremental)
+- Skeleton screens durante carga en vez de spinner
 
-### Vehicle Detail (`/vehiculo/:id`)
-- Image carousel
-- Full vehicle details
-- AI assessment badge (estado + damage estimation)
-- Contact seller button
+### 7. `src/pages/VehicleDetail.tsx` - Detalles refinados
+- Carousel con bordes 16px y transiciones suaves
+- Seccion "Analisis Inteligente" con acento #D32F45 para alertas
+- Specs cards con glassmorphism sutil
 
-### Seller Dashboard (`/dashboard`)
-- List of seller's own publications
-- Stats summary
-- Link to create new listing
+### 8. `src/pages/Auth.tsx` - Login Apple-style
+- Card con glassmorphism
+- Botones de rol con transicion `scale-[0.98]` al presionar
+- Bordes mas redondeados
 
-### Create/Edit Listing (`/publicar`)
-- Form: marca, modelo, anio, kilometraje, tipo_combustible, transmision, precio, ubicacion, descripcion
-- Multi-image upload to Supabase Storage bucket `vehiculos`
-- On submit, calls edge function `assess-vehicle` for simulated AI assessment
+### 9. `src/pages/CreateListing.tsx` - Formulario refinado
+- Card con sombra suave y radius 16px
+- Inputs con bordes finos `#666`, foco con ring sutil rojo
+- Selector de imagenes con borde rojo al seleccionar
 
-## Edge Function: `assess-vehicle`
+### 10. `src/pages/Dashboard.tsx` - Estadisticas con glass
+- Cards de stats con glassmorphism
+- Lista de publicaciones mas limpia
 
-Uses Lovable AI Gateway to simulate vehicle condition assessment:
-- Receives vehicle data (brand, model, year, mileage, description)
-- Returns structured JSON: `{ estado: "Excelente|Bueno|Regular|Malo", estimacion_danos: string, puntaje: number }`
-- Stores result in `publicaciones.estado_vehiculo` and `estimacion_danos`
+### 11. `src/components/ImageUpload.tsx` - Miniaturas mejoradas
+- Borde rojo (#D32F45) en imagen seleccionada/activa
+- Thumbnails con radius 12px
 
-## Key Files to Create/Modify
+## Technical Details
 
-| File | Purpose |
-|------|---------|
-| `src/contexts/AuthContext.tsx` | Auth state, login, signup, logout |
-| `src/pages/Auth.tsx` | Login/Register page |
-| `src/pages/Index.tsx` | Home with listings grid + filters |
-| `src/pages/VehicleDetail.tsx` | Single vehicle view |
-| `src/pages/Dashboard.tsx` | Seller dashboard |
-| `src/pages/CreateListing.tsx` | Publish vehicle form |
-| `src/components/VehicleCard.tsx` | Card component for grid |
-| `src/components/ImageUpload.tsx` | Multi-image upload component |
-| `src/components/Navbar.tsx` | Navigation bar |
-| `src/components/VehicleFilters.tsx` | Filter sidebar/bar |
-| `supabase/functions/assess-vehicle/index.ts` | AI assessment edge function |
-| Migration SQL | Add columns, bucket, RLS policies |
+- No se agregan dependencias nuevas (Drawer ya existe via vaul)
+- `useIsMobile()` hook ya existe para responsive filters
+- Skeleton component ya disponible en `ui/skeleton.tsx`
+- Animaciones via Tailwind keyframes, sin Framer Motion (mantener bundle ligero)
+- Colores se definen en CSS variables para consistencia light/dark
 
 ## Implementation Order
 
-1. Database migration (add columns, bucket, RLS)
-2. Auth context + Auth page
-3. Navbar with auth state
-4. Home page with vehicle grid + filters
-5. Create Listing page with image upload
-6. Edge function for AI assessment
-7. Vehicle Detail page
-8. Seller Dashboard
+1. CSS variables y tailwind config (paleta + radius + animaciones)
+2. Navbar glassmorphism
+3. VehicleCard rediseno
+4. VehicleFilters drawer movil
+5. Index page (hero, skeletons, stagger)
+6. Paginas restantes (Auth, Detail, CreateListing, Dashboard)
 
