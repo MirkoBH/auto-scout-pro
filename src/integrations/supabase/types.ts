@@ -64,6 +64,8 @@ export type Database = {
           anio: number
           created_at: string | null
           descripcion: string | null
+          estado_vehiculo: string | null
+          estimacion_danos: string | null
           id: number
           kilometraje: number | null
           marca: string
@@ -73,11 +75,14 @@ export type Database = {
           transmision: string | null
           ubicacion: string | null
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           anio: number
           created_at?: string | null
           descripcion?: string | null
+          estado_vehiculo?: string | null
+          estimacion_danos?: string | null
           id?: number
           kilometraje?: number | null
           marca: string
@@ -87,11 +92,14 @@ export type Database = {
           transmision?: string | null
           ubicacion?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           anio?: number
           created_at?: string | null
           descripcion?: string | null
+          estado_vehiculo?: string | null
+          estimacion_danos?: string | null
           id?: number
           kilometraje?: number | null
           marca?: string
@@ -101,6 +109,7 @@ export type Database = {
           transmision?: string | null
           ubicacion?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
