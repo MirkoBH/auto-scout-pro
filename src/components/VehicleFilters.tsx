@@ -15,6 +15,8 @@ export interface Filters {
   anioMin: string;
   combustible: string;
   transmision: string;
+  pais: string;
+  provincia: string;
 }
 
 interface Props {
