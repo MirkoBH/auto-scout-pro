@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ImageUpload from "@/components/ImageUpload";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { useCountries } from "@/hooks/useCountries";
 
 const CreateListing = () => {
   const { user } = useAuth();
@@ -18,6 +19,11 @@ const CreateListing = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const { countryList, getStates } = useCountries();
+  const [selectedCountry, setSelectedCountry] = useState("");
+  const [selectedState, setSelectedState] = useState("");
+
+  const states = getStates(selectedCountry);
 
   const [form, setForm] = useState({
     marca: "", modelo: "", anio: "", kilometraje: "", tipo_combustible: "", transmision: "", precio: "", ubicacion: "", descripcion: "",
@@ -39,7 +45,11 @@ const CreateListing = () => {
         tipo_combustible: form.tipo_combustible || null,
         transmision: form.transmision || null,
         precio: Number(form.precio),
-        ubicacion: form.ubicacion || null,
+        ubicacion: selectedState && selectedCountry
+          ? `${states.find(s => s.code === selectedState)?.name || selectedState}, ${countryList.find(c => c.code === selectedCountry)?.name || selectedCountry}`
+          : selectedCountry
+            ? countryList.find(c => c.code === selectedCountry)?.name || selectedCountry
+            : null,
         descripcion: form.descripcion || null,
         user_id: user.id,
       }).select("id").single();
@@ -123,8 +133,22 @@ const CreateListing = () => {
                 <Input type="number" value={form.kilometraje} onChange={e => set("kilometraje", e.target.value)} min={0} placeholder="50000" />
               </div>
               <div className="space-y-2">
-                <Label>Ubicación</Label>
-                <Input value={form.ubicacion} onChange={e => set("ubicacion", e.target.value)} placeholder="Ciudad de México" />
+                <Label>País</Label>
+                <Select value={selectedCountry} onValueChange={v => { setSelectedCountry(v); setSelectedState(""); }}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar país" /></SelectTrigger>
+                  <SelectContent>
+                    {countryList.map(c => <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Provincia / Estado</Label>
+                <Select value={selectedState} onValueChange={setSelectedState} disabled={!selectedCountry || states.length === 0}>
+                  <SelectTrigger><SelectValue placeholder={!selectedCountry ? "Selecciona un país primero" : states.length === 0 ? "Sin provincias" : "Seleccionar"} /></SelectTrigger>
+                  <SelectContent>
+                    {states.map(s => <SelectItem key={s.code} value={s.code}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

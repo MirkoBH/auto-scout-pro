@@ -8,7 +8,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const emptyFilters: Filters = { search: "", marca: "", minPrecio: "", maxPrecio: "", anioMin: "", combustible: "", transmision: "" };
+const emptyFilters: Filters = { search: "", marca: "", minPrecio: "", maxPrecio: "", anioMin: "", combustible: "", transmision: "", pais: "", provincia: "" };
 
 interface Publicacion {
   id: number;
@@ -67,6 +67,31 @@ const Index = () => {
 
   const marcas = useMemo(() => [...new Set(publicaciones.map(p => p.marca))].sort(), [publicaciones]);
 
+  // Extract unique countries and provinces from ubicacion "Province, Country"
+  const paises = useMemo(() => {
+    const paisSet = new Set<string>();
+    publicaciones.forEach(p => {
+      if (!p.ubicacion) return;
+      const parts = p.ubicacion.split(", ");
+      const pais = parts.length >= 2 ? parts[parts.length - 1] : parts[0];
+      paisSet.add(pais);
+    });
+    return [...paisSet].sort();
+  }, [publicaciones]);
+
+  const filteredProvincias = useMemo(() => {
+    if (!filters.pais || filters.pais === "all") return [];
+    const provSet = paises.length > 0 ? (publicaciones.reduce((acc, p) => {
+      if (!p.ubicacion) return acc;
+      const parts = p.ubicacion.split(", ");
+      if (parts.length >= 2 && parts[parts.length - 1] === filters.pais) {
+        acc.add(parts.slice(0, -1).join(", "));
+      }
+      return acc;
+    }, new Set<string>())) : new Set<string>();
+    return [...provSet].sort();
+  }, [publicaciones, filters.pais, paises]);
+
   const imageMap = useMemo(() => {
     const map: Record<string, string> = {};
     imagenes.forEach(img => {
@@ -87,6 +112,18 @@ const Index = () => {
       if (filters.anioMin && p.anio < Number(filters.anioMin)) return false;
       if (filters.combustible && filters.combustible !== "all" && p.tipo_combustible !== filters.combustible) return false;
       if (filters.transmision && filters.transmision !== "all" && p.transmision !== filters.transmision) return false;
+      if (filters.pais && filters.pais !== "all") {
+        if (!p.ubicacion) return false;
+        const parts = p.ubicacion.split(", ");
+        const pais = parts.length >= 2 ? parts[parts.length - 1] : parts[0];
+        if (pais !== filters.pais) return false;
+      }
+      if (filters.provincia && filters.provincia !== "all") {
+        if (!p.ubicacion) return false;
+        const parts = p.ubicacion.split(", ");
+        const prov = parts.length >= 2 ? parts.slice(0, -1).join(", ") : "";
+        if (prov !== filters.provincia) return false;
+      }
       return true;
     });
   }, [publicaciones, filters]);
@@ -113,7 +150,7 @@ const Index = () => {
 
       {/* Filters + Grid */}
       <section className="container pb-16 space-y-6">
-        <VehicleFilters filters={filters} onChange={setFilters} onClear={() => setFilters(emptyFilters)} marcas={marcas} />
+        <VehicleFilters filters={filters} onChange={setFilters} onClear={() => setFilters(emptyFilters)} marcas={marcas} paises={paises} provincias={filteredProvincias} />
 
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

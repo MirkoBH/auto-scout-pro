@@ -15,6 +15,8 @@ export interface Filters {
   anioMin: string;
   combustible: string;
   transmision: string;
+  pais: string;
+  provincia: string;
 }
 
 interface Props {
@@ -22,13 +24,15 @@ interface Props {
   onChange: (f: Filters) => void;
   onClear: () => void;
   marcas: string[];
+  paises: string[];
+  provincias: string[];
 }
 
-const FilterFields = ({ filters, onChange, marcas }: { filters: Filters; onChange: (f: Filters) => void; marcas: string[] }) => {
+const FilterFields = ({ filters, onChange, marcas, paises, provincias }: { filters: Filters; onChange: (f: Filters) => void; marcas: string[]; paises: string[]; provincias: string[] }) => {
   const set = (key: keyof Filters, val: string) => onChange({ ...filters, [key]: val });
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Marca</Label>
         <Select value={filters.marca} onValueChange={v => set("marca", v)}>
@@ -80,16 +84,38 @@ const FilterFields = ({ filters, onChange, marcas }: { filters: Filters; onChang
           </SelectContent>
         </Select>
       </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">País</Label>
+        <Select value={filters.pais} onValueChange={v => { set("pais", v); if (v !== filters.pais) onChange({ ...filters, pais: v, provincia: "" }); }}>
+          <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            {paises.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Provincia</Label>
+        <Select value={filters.provincia} onValueChange={v => set("provincia", v)} disabled={!filters.pais || filters.pais === "all"}>
+          <SelectTrigger><SelectValue placeholder={!filters.pais || filters.pais === "all" ? "Selecciona país" : "Todas"} /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            {provincias.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
     </div>
   );
 };
 
-const VehicleFilters = ({ filters, onChange, onClear, marcas }: Props) => {
+const VehicleFilters = ({ filters, onChange, onClear, marcas, paises, provincias }: Props) => {
   const isMobile = useIsMobile();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const set = (key: keyof Filters, val: string) => onChange({ ...filters, [key]: val });
 
-  const hasActiveFilters = filters.marca || filters.minPrecio || filters.maxPrecio || filters.anioMin || filters.combustible || filters.transmision;
+  const hasActiveFilters = filters.marca || filters.minPrecio || filters.maxPrecio || filters.anioMin || filters.combustible || filters.transmision || filters.pais || filters.provincia;
 
   if (isMobile) {
     return (
@@ -116,7 +142,7 @@ const VehicleFilters = ({ filters, onChange, onClear, marcas }: Props) => {
                 <DrawerTitle>Filtros</DrawerTitle>
               </DrawerHeader>
               <div className="px-4 pb-6 space-y-4">
-                <FilterFields filters={filters} onChange={onChange} marcas={marcas} />
+                <FilterFields filters={filters} onChange={onChange} marcas={marcas} paises={paises} provincias={provincias} />
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" onClick={() => { onClear(); setDrawerOpen(false); }} className="text-muted-foreground">
                     <X className="mr-1 h-3.5 w-3.5" /> Limpiar
@@ -145,7 +171,7 @@ const VehicleFilters = ({ filters, onChange, onClear, marcas }: Props) => {
         />
       </div>
 
-      <FilterFields filters={filters} onChange={onChange} marcas={marcas} />
+      <FilterFields filters={filters} onChange={onChange} marcas={marcas} paises={paises} provincias={provincias} />
 
       {hasActiveFilters && (
         <Button variant="ghost" size="sm" onClick={onClear} className="text-muted-foreground">
