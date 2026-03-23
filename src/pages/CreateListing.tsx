@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ImageUpload from "@/components/ImageUpload";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { useCountries } from "@/hooks/useCountries";
 
 const CreateListing = () => {
   const { user } = useAuth();
@@ -18,6 +19,11 @@ const CreateListing = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const { countryList, getStates } = useCountries();
+  const [selectedCountry, setSelectedCountry] = useState("");
+  const [selectedState, setSelectedState] = useState("");
+
+  const states = getStates(selectedCountry);
 
   const [form, setForm] = useState({
     marca: "", modelo: "", anio: "", kilometraje: "", tipo_combustible: "", transmision: "", precio: "", ubicacion: "", descripcion: "",
