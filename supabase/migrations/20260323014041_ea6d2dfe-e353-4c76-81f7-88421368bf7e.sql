@@ -1,0 +1,1 @@
+ALTER TABLE public.imagenes_publicacion ALTER COLUMN publicacion_id TYPE text USING publicacion_id::text;
