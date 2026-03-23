@@ -133,8 +133,22 @@ const CreateListing = () => {
                 <Input type="number" value={form.kilometraje} onChange={e => set("kilometraje", e.target.value)} min={0} placeholder="50000" />
               </div>
               <div className="space-y-2">
-                <Label>Ubicación</Label>
-                <Input value={form.ubicacion} onChange={e => set("ubicacion", e.target.value)} placeholder="Ciudad de México" />
+                <Label>País</Label>
+                <Select value={selectedCountry} onValueChange={v => { setSelectedCountry(v); setSelectedState(""); }}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar país" /></SelectTrigger>
+                  <SelectContent>
+                    {countryList.map(c => <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Provincia / Estado</Label>
+                <Select value={selectedState} onValueChange={setSelectedState} disabled={!selectedCountry || states.length === 0}>
+                  <SelectTrigger><SelectValue placeholder={!selectedCountry ? "Selecciona un país primero" : states.length === 0 ? "Sin provincias" : "Seleccionar"} /></SelectTrigger>
+                  <SelectContent>
+                    {states.map(s => <SelectItem key={s.code} value={s.code}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
