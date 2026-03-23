@@ -24,6 +24,8 @@ interface Props {
   onChange: (f: Filters) => void;
   onClear: () => void;
   marcas: string[];
+  paises: string[];
+  provincias: string[];
 }
 
 const FilterFields = ({ filters, onChange, marcas }: { filters: Filters; onChange: (f: Filters) => void; marcas: string[] }) => {
