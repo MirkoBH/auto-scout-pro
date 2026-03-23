@@ -68,23 +68,15 @@ const Index = () => {
   const marcas = useMemo(() => [...new Set(publicaciones.map(p => p.marca))].sort(), [publicaciones]);
 
   // Extract unique countries and provinces from ubicacion "Province, Country"
-  const { paises, provincias } = useMemo(() => {
+  const paises = useMemo(() => {
     const paisSet = new Set<string>();
-    const provMap = new Map<string, Set<string>>();
     publicaciones.forEach(p => {
       if (!p.ubicacion) return;
       const parts = p.ubicacion.split(", ");
       const pais = parts.length >= 2 ? parts[parts.length - 1] : parts[0];
-      const prov = parts.length >= 2 ? parts.slice(0, -1).join(", ") : "";
       paisSet.add(pais);
-      if (prov) {
-        if (!provMap.has(pais)) provMap.set(pais, new Set());
-        provMap.get(pais)!.add(prov);
-      }
     });
-    const allPaises = [...paisSet].sort();
-    // Show provinces for the selected country filter
-    return { paises: allPaises, provMap };
+    return [...paisSet].sort();
   }, [publicaciones]);
 
   const filteredProvincias = useMemo(() => {
