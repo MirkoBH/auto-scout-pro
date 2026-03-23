@@ -150,7 +150,7 @@ const Index = () => {
 
       {/* Filters + Grid */}
       <section className="container pb-16 space-y-6">
-        <VehicleFilters filters={filters} onChange={setFilters} onClear={() => setFilters(emptyFilters)} marcas={marcas} />
+        <VehicleFilters filters={filters} onChange={setFilters} onClear={() => setFilters(emptyFilters)} marcas={marcas} paises={paises} provincias={filteredProvincias} />
 
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
