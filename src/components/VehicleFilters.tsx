@@ -28,11 +28,11 @@ interface Props {
   provincias: string[];
 }
 
-const FilterFields = ({ filters, onChange, marcas }: { filters: Filters; onChange: (f: Filters) => void; marcas: string[] }) => {
+const FilterFields = ({ filters, onChange, marcas, paises, provincias }: { filters: Filters; onChange: (f: Filters) => void; marcas: string[]; paises: string[]; provincias: string[] }) => {
   const set = (key: keyof Filters, val: string) => onChange({ ...filters, [key]: val });
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Marca</Label>
         <Select value={filters.marca} onValueChange={v => set("marca", v)}>
@@ -81,6 +81,28 @@ const FilterFields = ({ filters, onChange, marcas }: { filters: Filters; onChang
             <SelectItem value="all">Todas</SelectItem>
             <SelectItem value="Manual">Manual</SelectItem>
             <SelectItem value="Automática">Automática</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">País</Label>
+        <Select value={filters.pais} onValueChange={v => { set("pais", v); if (v !== filters.pais) onChange({ ...filters, pais: v, provincia: "" }); }}>
+          <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            {paises.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Provincia</Label>
+        <Select value={filters.provincia} onValueChange={v => set("provincia", v)} disabled={!filters.pais || filters.pais === "all"}>
+          <SelectTrigger><SelectValue placeholder={!filters.pais || filters.pais === "all" ? "Selecciona país" : "Todas"} /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            {provincias.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
