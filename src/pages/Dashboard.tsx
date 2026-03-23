@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Car, Eye, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { deleteVehicleImageUrls } from "@/lib/storageImages";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -25,13 +26,49 @@ const Dashboard = () => {
   useEffect(() => { fetchListings(); }, [user]);
 
   const handleDelete = async (id: number) => {
-    const { error } = await supabase.from("publicaciones").delete().eq("id", id);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Publicación eliminada" });
-      fetchListings();
+    const { data: imageRows, error: imageFetchError } = await supabase
+      .from("imagenes_publicacion")
+      .select("id, publicacion_id, imagen_ids")
+      .eq("publicacion_id", String(id));
+
+    if (imageFetchError) {
+      toast({ title: "Error", description: imageFetchError.message, variant: "destructive" });
+      return;
     }
+
+    const { error: listingDeleteError } = await supabase.from("publicaciones").delete().eq("id", id);
+
+    if (listingDeleteError) {
+      toast({ title: "Error", description: listingDeleteError.message, variant: "destructive" });
+      return;
+    }
+
+    const imageUrls = (imageRows ?? []).flatMap((row) => row.imagen_ids ?? []);
+
+    const { error: imageDeleteError } = await supabase
+      .from("imagenes_publicacion")
+      .delete()
+      .eq("publicacion_id", String(id));
+
+    if (imageDeleteError) {
+      toast({ title: "Publicación eliminada con advertencia", description: imageDeleteError.message, variant: "destructive" });
+      fetchListings();
+      return;
+    }
+
+    if (imageUrls.length) {
+      try {
+        await deleteVehicleImageUrls(imageUrls);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "No se pudieron borrar imágenes del storage";
+        toast({ title: "Publicación eliminada con advertencia", description: message, variant: "destructive" });
+        fetchListings();
+        return;
+      }
+    }
+
+    toast({ title: "Publicación eliminada" });
+    fetchListings();
   };
 
   if (!user) return null;

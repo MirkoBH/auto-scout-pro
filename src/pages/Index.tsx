@@ -7,8 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCarMakes } from "@/hooks/useCarMakes";
+import { useCurrentYear } from "@/hooks/useCurrentYear";
+import { useToast } from "@/hooks/use-toast";
 
-const emptyFilters: Filters = { search: "", marca: "", minPrecio: "", maxPrecio: "", anioMin: "", combustible: "", transmision: "", pais: "", provincia: "" };
+const emptyFilters: Filters = { search: "", marca: "", modelo: "", minPrecio: "", maxPrecio: "", anioMin: "", combustible: "", transmision: "", pais: "", provincia: "" };
+const MIN_VEHICLE_YEAR = 1886;
 
 interface Publicacion {
   id: number;
@@ -47,6 +51,9 @@ const CardSkeleton = () => (
 
 const Index = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const { makes, modelsByMake, makesError } = useCarMakes();
+  const { currentYear } = useCurrentYear();
   const [publicaciones, setPublicaciones] = useState<Publicacion[]>([]);
   const [imagenes, setImagenes] = useState<ImagenPublicacion[]>([]);
   const [filters, setFilters] = useState<Filters>(emptyFilters);
@@ -65,7 +72,19 @@ const Index = () => {
     fetchData();
   }, []);
 
-  const marcas = useMemo(() => [...new Set(publicaciones.map(p => p.marca))].sort(), [publicaciones]);
+  useEffect(() => {
+    if (!makesError) return;
+    toast({ title: "Marcas/modelos API no disponible", description: makesError, variant: "destructive" });
+  }, [makesError, toast]);
+
+  const marcasFromListings = useMemo(() => [...new Set(publicaciones.map((p) => p.marca))].sort(), [publicaciones]);
+  const marcas = makes.length > 0 ? makes : marcasFromListings;
+
+  const modelos = useMemo(() => {
+    if (!filters.marca || filters.marca === "all") return [];
+    if (modelsByMake.size > 0) return modelsByMake.get(filters.marca) ?? [];
+    return [...new Set(publicaciones.filter((p) => p.marca === filters.marca).map((p) => p.modelo))].sort();
+  }, [filters.marca, modelsByMake, publicaciones]);
 
   // Extract unique countries and provinces from ubicacion "Province, Country"
   const paises = useMemo(() => {
@@ -107,9 +126,14 @@ const Index = () => {
         if (!`${p.marca} ${p.modelo}`.toLowerCase().includes(q)) return false;
       }
       if (filters.marca && filters.marca !== "all" && p.marca !== filters.marca) return false;
+      if (filters.modelo && filters.modelo !== "all" && p.modelo !== filters.modelo) return false;
       if (filters.minPrecio && p.precio < Number(filters.minPrecio)) return false;
       if (filters.maxPrecio && p.precio > Number(filters.maxPrecio)) return false;
-      if (filters.anioMin && p.anio < Number(filters.anioMin)) return false;
+      if (filters.anioMin) {
+        const anioMinInput = Number(filters.anioMin);
+        const safeAnioMin = Math.min(currentYear, Math.max(MIN_VEHICLE_YEAR, Math.trunc(anioMinInput)));
+        if (p.anio < safeAnioMin) return false;
+      }
       if (filters.combustible && filters.combustible !== "all" && p.tipo_combustible !== filters.combustible) return false;
       if (filters.transmision && filters.transmision !== "all" && p.transmision !== filters.transmision) return false;
       if (filters.pais && filters.pais !== "all") {
@@ -126,7 +150,7 @@ const Index = () => {
       }
       return true;
     });
-  }, [publicaciones, filters]);
+  }, [publicaciones, filters, currentYear]);
 
   return (
     <div className="min-h-screen">
@@ -150,7 +174,16 @@ const Index = () => {
 
       {/* Filters + Grid */}
       <section className="container pb-16 space-y-6">
-        <VehicleFilters filters={filters} onChange={setFilters} onClear={() => setFilters(emptyFilters)} marcas={marcas} paises={paises} provincias={filteredProvincias} />
+        <VehicleFilters
+          filters={filters}
+          onChange={setFilters}
+          onClear={() => setFilters(emptyFilters)}
+          marcas={marcas}
+          modelos={modelos}
+          paises={paises}
+          provincias={filteredProvincias}
+          currentYear={currentYear}
+        />
 
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

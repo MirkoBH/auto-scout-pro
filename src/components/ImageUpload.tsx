@@ -1,7 +1,8 @@
-import { useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ImagePlus, X, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { deleteVehicleImageUrls } from "@/lib/storageImages";
 
 interface Props {
   userId: string;
@@ -13,6 +14,10 @@ const ImageUpload = ({ userId, onImagesUploaded, existingUrls = [] }: Props) => 
   const [uploading, setUploading] = useState(false);
   const [urls, setUrls] = useState<string[]>(existingUrls);
   const { toast } = useToast();
+
+  useEffect(() => {
+    setUrls(existingUrls);
+  }, [existingUrls]);
 
   const handleUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -39,8 +44,20 @@ const ImageUpload = ({ userId, onImagesUploaded, existingUrls = [] }: Props) => 
     setUploading(false);
   }, [urls, userId, onImagesUploaded, toast]);
 
-  const removeImage = (index: number) => {
+  const removeImage = async (index: number) => {
+    const removed = urls[index];
     const updated = urls.filter((_, i) => i !== index);
+
+    if (removed) {
+      try {
+        await deleteVehicleImageUrls([removed]);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "No se pudo borrar la imagen del storage";
+        toast({ title: "Error eliminando imagen", description: message, variant: "destructive" });
+        return;
+      }
+    }
+
     setUrls(updated);
     onImagesUploaded(updated);
   };

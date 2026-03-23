@@ -6,10 +6,12 @@ import { Search, X, SlidersHorizontal } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
 import { useState } from "react";
+import SearchableSelect from "@/components/SearchableSelect";
 
 export interface Filters {
   search: string;
   marca: string;
+  modelo: string;
   minPrecio: string;
   maxPrecio: string;
   anioMin: string;
@@ -24,39 +26,119 @@ interface Props {
   onChange: (f: Filters) => void;
   onClear: () => void;
   marcas: string[];
+  modelos: string[];
   paises: string[];
   provincias: string[];
+  currentYear: number;
 }
 
-const FilterFields = ({ filters, onChange, marcas, paises, provincias }: { filters: Filters; onChange: (f: Filters) => void; marcas: string[]; paises: string[]; provincias: string[] }) => {
+const MIN_VEHICLE_YEAR = 1886;
+
+const FilterFields = ({
+  filters,
+  onChange,
+  marcas,
+  modelos,
+  paises,
+  provincias,
+  currentYear,
+}: {
+  filters: Filters;
+  onChange: (f: Filters) => void;
+  marcas: string[];
+  modelos: string[];
+  paises: string[];
+  provincias: string[];
+  currentYear: number;
+}) => {
   const set = (key: keyof Filters, val: string) => onChange({ ...filters, [key]: val });
+  const marcaOptions = marcas.map((m) => ({ value: m, label: m }));
+  const modeloOptions = modelos.map((m) => ({ value: m, label: m }));
+  const paisOptions = paises.map((p) => ({ value: p, label: p }));
+  const provinciaOptions = provincias.map((p) => ({ value: p, label: p }));
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Marca</Label>
-        <Select value={filters.marca} onValueChange={v => set("marca", v)}>
-          <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            {marcas.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={filters.marca}
+          onChange={(v) => {
+            if (v !== filters.marca) onChange({ ...filters, marca: v, modelo: "" });
+          }}
+          options={marcaOptions}
+          allLabel="Todas"
+          placeholder="Todas"
+          searchPlaceholder="Buscar marca..."
+          emptyText="Sin marcas"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Modelo</Label>
+        <SearchableSelect
+          value={filters.modelo}
+          onChange={(v) => set("modelo", v)}
+          options={modeloOptions}
+          allLabel="Todos"
+          placeholder={!filters.marca || filters.marca === "all" ? "Selecciona marca" : "Todos"}
+          searchPlaceholder="Buscar modelo..."
+          emptyText="Sin modelos"
+          disabled={!filters.marca || filters.marca === "all"}
+        />
       </div>
 
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Precio mín</Label>
-        <Input type="number" placeholder="0" value={filters.minPrecio} onChange={e => set("minPrecio", e.target.value)} />
+        <Input
+          type="number"
+          placeholder="0"
+          value={filters.minPrecio}
+          min={0}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (!value) return set("minPrecio", "");
+            const parsed = Number(value);
+            if (!Number.isFinite(parsed)) return;
+            set("minPrecio", String(Math.max(0, parsed)));
+          }}
+        />
       </div>
 
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Precio máx</Label>
-        <Input type="number" placeholder="∞" value={filters.maxPrecio} onChange={e => set("maxPrecio", e.target.value)} />
+        <Input
+          type="number"
+          placeholder="∞"
+          value={filters.maxPrecio}
+          min={0}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (!value) return set("maxPrecio", "");
+            const parsed = Number(value);
+            if (!Number.isFinite(parsed)) return;
+            set("maxPrecio", String(Math.max(0, parsed)));
+          }}
+        />
       </div>
 
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Año mín</Label>
-        <Input type="number" placeholder="2000" value={filters.anioMin} onChange={e => set("anioMin", e.target.value)} />
+        <Input
+          type="number"
+          placeholder="2000"
+          value={filters.anioMin}
+          min={MIN_VEHICLE_YEAR}
+          max={currentYear}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (!value) return set("anioMin", "");
+            const parsed = Number(value);
+            if (!Number.isFinite(parsed)) return;
+            const clamped = Math.min(currentYear, Math.max(MIN_VEHICLE_YEAR, Math.trunc(parsed)));
+            set("anioMin", String(clamped));
+          }}
+        />
       </div>
 
       <div className="space-y-1.5">
@@ -87,35 +169,42 @@ const FilterFields = ({ filters, onChange, marcas, paises, provincias }: { filte
 
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">País</Label>
-        <Select value={filters.pais} onValueChange={v => { set("pais", v); if (v !== filters.pais) onChange({ ...filters, pais: v, provincia: "" }); }}>
-          <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            {paises.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={filters.pais}
+          onChange={(v) => {
+            if (v !== filters.pais) onChange({ ...filters, pais: v, provincia: "" });
+          }}
+          options={paisOptions}
+          allLabel="Todos"
+          placeholder="Todos"
+          searchPlaceholder="Buscar país..."
+          emptyText="Sin países"
+        />
       </div>
 
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Provincia</Label>
-        <Select value={filters.provincia} onValueChange={v => set("provincia", v)} disabled={!filters.pais || filters.pais === "all"}>
-          <SelectTrigger><SelectValue placeholder={!filters.pais || filters.pais === "all" ? "Selecciona país" : "Todas"} /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            {provincias.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={filters.provincia}
+          onChange={(v) => set("provincia", v)}
+          options={provinciaOptions}
+          allLabel="Todas"
+          placeholder={!filters.pais || filters.pais === "all" ? "Selecciona país" : "Todas"}
+          searchPlaceholder="Buscar provincia/localidad..."
+          emptyText="Sin provincias/localidades"
+          disabled={!filters.pais || filters.pais === "all"}
+        />
       </div>
     </div>
   );
 };
 
-const VehicleFilters = ({ filters, onChange, onClear, marcas, paises, provincias }: Props) => {
+const VehicleFilters = ({ filters, onChange, onClear, marcas, modelos, paises, provincias, currentYear }: Props) => {
   const isMobile = useIsMobile();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const set = (key: keyof Filters, val: string) => onChange({ ...filters, [key]: val });
 
-  const hasActiveFilters = filters.marca || filters.minPrecio || filters.maxPrecio || filters.anioMin || filters.combustible || filters.transmision || filters.pais || filters.provincia;
+  const hasActiveFilters = filters.marca || filters.modelo || filters.minPrecio || filters.maxPrecio || filters.anioMin || filters.combustible || filters.transmision || filters.pais || filters.provincia;
 
   if (isMobile) {
     return (
@@ -142,7 +231,15 @@ const VehicleFilters = ({ filters, onChange, onClear, marcas, paises, provincias
                 <DrawerTitle>Filtros</DrawerTitle>
               </DrawerHeader>
               <div className="px-4 pb-6 space-y-4">
-                <FilterFields filters={filters} onChange={onChange} marcas={marcas} paises={paises} provincias={provincias} />
+                <FilterFields
+                  filters={filters}
+                  onChange={onChange}
+                  marcas={marcas}
+                  modelos={modelos}
+                  paises={paises}
+                  provincias={provincias}
+                  currentYear={currentYear}
+                />
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" onClick={() => { onClear(); setDrawerOpen(false); }} className="text-muted-foreground">
                     <X className="mr-1 h-3.5 w-3.5" /> Limpiar
@@ -171,7 +268,15 @@ const VehicleFilters = ({ filters, onChange, onClear, marcas, paises, provincias
         />
       </div>
 
-      <FilterFields filters={filters} onChange={onChange} marcas={marcas} paises={paises} provincias={provincias} />
+      <FilterFields
+        filters={filters}
+        onChange={onChange}
+        marcas={marcas}
+        modelos={modelos}
+        paises={paises}
+        provincias={provincias}
+        currentYear={currentYear}
+      />
 
       {hasActiveFilters && (
         <Button variant="ghost" size="sm" onClick={onClear} className="text-muted-foreground">
