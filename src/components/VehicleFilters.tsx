@@ -142,7 +142,7 @@ const VehicleFilters = ({ filters, onChange, onClear, marcas, paises, provincias
                 <DrawerTitle>Filtros</DrawerTitle>
               </DrawerHeader>
               <div className="px-4 pb-6 space-y-4">
-                <FilterFields filters={filters} onChange={onChange} marcas={marcas} />
+                <FilterFields filters={filters} onChange={onChange} marcas={marcas} paises={paises} provincias={provincias} />
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" onClick={() => { onClear(); setDrawerOpen(false); }} className="text-muted-foreground">
                     <X className="mr-1 h-3.5 w-3.5" /> Limpiar
