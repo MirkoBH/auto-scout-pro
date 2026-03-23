@@ -45,7 +45,11 @@ const CreateListing = () => {
         tipo_combustible: form.tipo_combustible || null,
         transmision: form.transmision || null,
         precio: Number(form.precio),
-        ubicacion: form.ubicacion || null,
+        ubicacion: selectedState && selectedCountry
+          ? `${states.find(s => s.code === selectedState)?.name || selectedState}, ${countryList.find(c => c.code === selectedCountry)?.name || selectedCountry}`
+          : selectedCountry
+            ? countryList.find(c => c.code === selectedCountry)?.name || selectedCountry
+            : null,
         descripcion: form.descripcion || null,
         user_id: user.id,
       }).select("id").single();
