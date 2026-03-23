@@ -1,0 +1,2 @@
+INSERT INTO public.imagenes_publicacion (publicacion_id, imagen_ids)
+VALUES ('1', ARRAY['https://uixsodhskooqajszoxbt.supabase.co/storage/v1/object/public/vehiculos/b9746a90-02ab-4a9b-9914-38eeafe19068/4968085a-6a0b-4fe5-9aba-228c5311c3cf.jpg']);
