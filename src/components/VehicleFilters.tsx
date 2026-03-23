@@ -171,7 +171,7 @@ const VehicleFilters = ({ filters, onChange, onClear, marcas, paises, provincias
         />
       </div>
 
-      <FilterFields filters={filters} onChange={onChange} marcas={marcas} />
+      <FilterFields filters={filters} onChange={onChange} marcas={marcas} paises={paises} provincias={provincias} />
 
       {hasActiveFilters && (
         <Button variant="ghost" size="sm" onClick={onClear} className="text-muted-foreground">

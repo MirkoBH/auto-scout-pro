@@ -67,6 +67,39 @@ const Index = () => {
 
   const marcas = useMemo(() => [...new Set(publicaciones.map(p => p.marca))].sort(), [publicaciones]);
 
+  // Extract unique countries and provinces from ubicacion "Province, Country"
+  const { paises, provincias } = useMemo(() => {
+    const paisSet = new Set<string>();
+    const provMap = new Map<string, Set<string>>();
+    publicaciones.forEach(p => {
+      if (!p.ubicacion) return;
+      const parts = p.ubicacion.split(", ");
+      const pais = parts.length >= 2 ? parts[parts.length - 1] : parts[0];
+      const prov = parts.length >= 2 ? parts.slice(0, -1).join(", ") : "";
+      paisSet.add(pais);
+      if (prov) {
+        if (!provMap.has(pais)) provMap.set(pais, new Set());
+        provMap.get(pais)!.add(prov);
+      }
+    });
+    const allPaises = [...paisSet].sort();
+    // Show provinces for the selected country filter
+    return { paises: allPaises, provMap };
+  }, [publicaciones]);
+
+  const filteredProvincias = useMemo(() => {
+    if (!filters.pais || filters.pais === "all") return [];
+    const provSet = paises.length > 0 ? (publicaciones.reduce((acc, p) => {
+      if (!p.ubicacion) return acc;
+      const parts = p.ubicacion.split(", ");
+      if (parts.length >= 2 && parts[parts.length - 1] === filters.pais) {
+        acc.add(parts.slice(0, -1).join(", "));
+      }
+      return acc;
+    }, new Set<string>())) : new Set<string>();
+    return [...provSet].sort();
+  }, [publicaciones, filters.pais, paises]);
+
   const imageMap = useMemo(() => {
     const map: Record<string, string> = {};
     imagenes.forEach(img => {
@@ -87,6 +120,18 @@ const Index = () => {
       if (filters.anioMin && p.anio < Number(filters.anioMin)) return false;
       if (filters.combustible && filters.combustible !== "all" && p.tipo_combustible !== filters.combustible) return false;
       if (filters.transmision && filters.transmision !== "all" && p.transmision !== filters.transmision) return false;
+      if (filters.pais && filters.pais !== "all") {
+        if (!p.ubicacion) return false;
+        const parts = p.ubicacion.split(", ");
+        const pais = parts.length >= 2 ? parts[parts.length - 1] : parts[0];
+        if (pais !== filters.pais) return false;
+      }
+      if (filters.provincia && filters.provincia !== "all") {
+        if (!p.ubicacion) return false;
+        const parts = p.ubicacion.split(", ");
+        const prov = parts.length >= 2 ? parts.slice(0, -1).join(", ") : "";
+        if (prov !== filters.provincia) return false;
+      }
       return true;
     });
   }, [publicaciones, filters]);
