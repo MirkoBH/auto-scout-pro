@@ -110,12 +110,12 @@ const FilterFields = ({ filters, onChange, marcas, paises, provincias }: { filte
   );
 };
 
-const VehicleFilters = ({ filters, onChange, onClear, marcas }: Props) => {
+const VehicleFilters = ({ filters, onChange, onClear, marcas, paises, provincias }: Props) => {
   const isMobile = useIsMobile();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const set = (key: keyof Filters, val: string) => onChange({ ...filters, [key]: val });
 
-  const hasActiveFilters = filters.marca || filters.minPrecio || filters.maxPrecio || filters.anioMin || filters.combustible || filters.transmision;
+  const hasActiveFilters = filters.marca || filters.minPrecio || filters.maxPrecio || filters.anioMin || filters.combustible || filters.transmision || filters.pais || filters.provincia;
 
   if (isMobile) {
     return (
