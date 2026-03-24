@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -6,6 +7,7 @@ import { Search, X, SlidersHorizontal } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
 import { useState } from "react";
+import { Combobox } from "@/components/ui/combobox";
 
 export interface Filters {
   search: string;
@@ -28,40 +30,76 @@ interface Props {
   provincias: string[];
 }
 
+const currentYear = new Date().getFullYear();
+const yearOptions = [
+  { value: "all", label: "Todos" },
+  ...Array.from({ length: currentYear - 1886 + 1 }, (_, i) => {
+    const y = String(currentYear - i);
+    return { value: y, label: y };
+  }),
+];
+
 const FilterFields = ({ filters, onChange, marcas, paises, provincias }: { filters: Filters; onChange: (f: Filters) => void; marcas: string[]; paises: string[]; provincias: string[] }) => {
   const set = (key: keyof Filters, val: string) => onChange({ ...filters, [key]: val });
+
+  const marcaOptions = useMemo(
+    () => [{ value: "all", label: "Todas" }, ...marcas.map((m) => ({ value: m, label: m }))],
+    [marcas]
+  );
+
+  const paisOptions = useMemo(
+    () => [{ value: "all", label: "Todos" }, ...paises.map((p) => ({ value: p, label: p }))],
+    [paises]
+  );
+
+  const provinciaOptions = useMemo(
+    () => [{ value: "all", label: "Todas" }, ...provincias.map((p) => ({ value: p, label: p }))],
+    [provincias]
+  );
+
+  const handlePrecioChange = (key: "minPrecio" | "maxPrecio", val: string) => {
+    const num = Number(val);
+    if (val && num < 0) return;
+    set(key, val);
+  };
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Marca</Label>
-        <Select value={filters.marca} onValueChange={v => set("marca", v)}>
-          <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            {marcas.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <Combobox
+          options={marcaOptions}
+          value={filters.marca}
+          onValueChange={(v) => set("marca", v)}
+          placeholder="Todas"
+          searchPlaceholder="Buscar marca..."
+        />
       </div>
 
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Precio mín</Label>
-        <Input type="number" placeholder="0" value={filters.minPrecio} onChange={e => set("minPrecio", e.target.value)} />
+        <Input type="number" placeholder="0" min={0} value={filters.minPrecio} onChange={(e) => handlePrecioChange("minPrecio", e.target.value)} />
       </div>
 
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Precio máx</Label>
-        <Input type="number" placeholder="∞" value={filters.maxPrecio} onChange={e => set("maxPrecio", e.target.value)} />
+        <Input type="number" placeholder="∞" min={0} value={filters.maxPrecio} onChange={(e) => handlePrecioChange("maxPrecio", e.target.value)} />
       </div>
 
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Año mín</Label>
-        <Input type="number" placeholder="2000" value={filters.anioMin} onChange={e => set("anioMin", e.target.value)} />
+        <Combobox
+          options={yearOptions}
+          value={filters.anioMin}
+          onValueChange={(v) => set("anioMin", v)}
+          placeholder="Todos"
+          searchPlaceholder="Buscar año..."
+        />
       </div>
 
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Combustible</Label>
-        <Select value={filters.combustible} onValueChange={v => set("combustible", v)}>
+        <Select value={filters.combustible} onValueChange={(v) => set("combustible", v)}>
           <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
@@ -75,7 +113,7 @@ const FilterFields = ({ filters, onChange, marcas, paises, provincias }: { filte
 
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Transmisión</Label>
-        <Select value={filters.transmision} onValueChange={v => set("transmision", v)}>
+        <Select value={filters.transmision} onValueChange={(v) => set("transmision", v)}>
           <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas</SelectItem>
@@ -87,24 +125,25 @@ const FilterFields = ({ filters, onChange, marcas, paises, provincias }: { filte
 
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">País</Label>
-        <Select value={filters.pais} onValueChange={v => { set("pais", v); if (v !== filters.pais) onChange({ ...filters, pais: v, provincia: "" }); }}>
-          <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            {paises.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <Combobox
+          options={paisOptions}
+          value={filters.pais}
+          onValueChange={(v) => { onChange({ ...filters, pais: v, provincia: "" }); }}
+          placeholder="Todos"
+          searchPlaceholder="Buscar país..."
+        />
       </div>
 
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">Provincia</Label>
-        <Select value={filters.provincia} onValueChange={v => set("provincia", v)} disabled={!filters.pais || filters.pais === "all"}>
-          <SelectTrigger><SelectValue placeholder={!filters.pais || filters.pais === "all" ? "Selecciona país" : "Todas"} /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            {provincias.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <Combobox
+          options={provinciaOptions}
+          value={filters.provincia}
+          onValueChange={(v) => set("provincia", v)}
+          placeholder={!filters.pais || filters.pais === "all" ? "Selecciona país" : "Todas"}
+          searchPlaceholder="Buscar provincia..."
+          disabled={!filters.pais || filters.pais === "all"}
+        />
       </div>
     </div>
   );
@@ -126,7 +165,7 @@ const VehicleFilters = ({ filters, onChange, onClear, marcas, paises, provincias
             <Input
               placeholder="Buscar marca, modelo..."
               value={filters.search}
-              onChange={e => set("search", e.target.value)}
+              onChange={(e) => set("search", e.target.value)}
               className="pl-9"
             />
           </div>
@@ -166,7 +205,7 @@ const VehicleFilters = ({ filters, onChange, onClear, marcas, paises, provincias
         <Input
           placeholder="Buscar marca, modelo..."
           value={filters.search}
-          onChange={e => set("search", e.target.value)}
+          onChange={(e) => set("search", e.target.value)}
           className="pl-9"
         />
       </div>

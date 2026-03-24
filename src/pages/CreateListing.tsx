@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,10 +8,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Combobox } from "@/components/ui/combobox";
 import ImageUpload from "@/components/ImageUpload";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useCountries } from "@/hooks/useCountries";
+import { useCarMakes, useCarModels } from "@/hooks/useCarApi";
+
+const currentYear = new Date().getFullYear();
+const yearOptions = Array.from({ length: currentYear - 1886 + 1 }, (_, i) => {
+  const y = String(currentYear - i);
+  return { value: y, label: y };
+});
 
 const CreateListing = () => {
   const { user } = useAuth();
@@ -22,33 +30,77 @@ const CreateListing = () => {
   const { countryList, getStates } = useCountries();
   const [selectedCountry, setSelectedCountry] = useState("");
   const [selectedState, setSelectedState] = useState("");
+  const [selectedMake, setSelectedMake] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
+
+  const { data: carMakes = [], isLoading: makesLoading } = useCarMakes();
+  const { data: carModels = [], isLoading: modelsLoading } = useCarModels(selectedMake);
 
   const states = getStates(selectedCountry);
 
+  const countryOptions = useMemo(
+    () => countryList.map((c) => ({ value: c.code, label: c.name })),
+    [countryList]
+  );
+
+  const stateOptions = useMemo(
+    () => states.map((s) => ({ value: s.code, label: s.name })),
+    [states]
+  );
+
+  const makeOptions = useMemo(
+    () => carMakes.map((m: string) => ({ value: m, label: m })),
+    [carMakes]
+  );
+
+  const modelOptions = useMemo(
+    () => carModels.map((m: string) => ({ value: m, label: m })),
+    [carModels]
+  );
+
   const [form, setForm] = useState({
-    marca: "", modelo: "", anio: "", kilometraje: "", tipo_combustible: "", transmision: "", precio: "", ubicacion: "", descripcion: "",
+    anio: "", kilometraje: "", tipo_combustible: "", transmision: "", precio: "", descripcion: "",
   });
 
-  const set = (key: string, val: string) => setForm(prev => ({ ...prev, [key]: val }));
+  const set = (key: string, val: string) => setForm((prev) => ({ ...prev, [key]: val }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    // Validations
+    const precio = Number(form.precio);
+    const km = form.kilometraje ? Number(form.kilometraje) : null;
+    const anio = Number(form.anio);
+
+    if (precio <= 0) {
+      toast({ title: "Error", description: "El precio debe ser mayor a 0.", variant: "destructive" });
+      return;
+    }
+    if (km !== null && km < 0) {
+      toast({ title: "Error", description: "El kilometraje no puede ser negativo.", variant: "destructive" });
+      return;
+    }
+    if (anio < 1886 || anio > currentYear) {
+      toast({ title: "Error", description: `El año debe estar entre 1886 y ${currentYear}.`, variant: "destructive" });
+      return;
+    }
+
     setLoading(true);
 
     try {
       const { data: pub, error: pubError } = await supabase.from("publicaciones").insert({
-        marca: form.marca,
-        modelo: form.modelo,
-        anio: Number(form.anio),
-        kilometraje: form.kilometraje ? Number(form.kilometraje) : null,
+        marca: selectedMake,
+        modelo: selectedModel,
+        anio,
+        kilometraje: km,
         tipo_combustible: form.tipo_combustible || null,
         transmision: form.transmision || null,
-        precio: Number(form.precio),
+        precio,
         ubicacion: selectedState && selectedCountry
-          ? `${states.find(s => s.code === selectedState)?.name || selectedState}, ${countryList.find(c => c.code === selectedCountry)?.name || selectedCountry}`
+          ? `${states.find((s) => s.code === selectedState)?.name || selectedState}, ${countryList.find((c) => c.code === selectedCountry)?.name || selectedCountry}`
           : selectedCountry
-            ? countryList.find(c => c.code === selectedCountry)?.name || selectedCountry
+            ? countryList.find((c) => c.code === selectedCountry)?.name || selectedCountry
             : null,
         descripcion: form.descripcion || null,
         user_id: user.id,
@@ -68,10 +120,10 @@ const CreateListing = () => {
           const { data: aiData } = await supabase.functions.invoke("assess-vehicle", {
             body: {
               publicacion_id: pub.id,
-              marca: form.marca,
-              modelo: form.modelo,
-              anio: Number(form.anio),
-              kilometraje: form.kilometraje ? Number(form.kilometraje) : null,
+              marca: selectedMake,
+              modelo: selectedModel,
+              anio,
+              kilometraje: km,
               descripcion: form.descripcion || "",
             },
           });
@@ -108,54 +160,77 @@ const CreateListing = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Marca *</Label>
-                <Input value={form.marca} onChange={e => set("marca", e.target.value)} required placeholder="Toyota" />
+                <Combobox
+                  options={makeOptions}
+                  value={selectedMake}
+                  onValueChange={(v) => { setSelectedMake(v); setSelectedModel(""); }}
+                  placeholder={makesLoading ? "Cargando..." : "Seleccionar marca"}
+                  searchPlaceholder="Buscar marca..."
+                  disabled={makesLoading}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Modelo *</Label>
-                <Input value={form.modelo} onChange={e => set("modelo", e.target.value)} required placeholder="Corolla" />
+                <Combobox
+                  options={modelOptions}
+                  value={selectedModel}
+                  onValueChange={setSelectedModel}
+                  placeholder={!selectedMake ? "Selecciona marca primero" : modelsLoading ? "Cargando..." : "Seleccionar modelo"}
+                  searchPlaceholder="Buscar modelo..."
+                  disabled={!selectedMake || modelsLoading}
+                />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Año *</Label>
-                <Input type="number" value={form.anio} onChange={e => set("anio", e.target.value)} required min={1886} placeholder="2020" />
+                <Combobox
+                  options={yearOptions}
+                  value={form.anio}
+                  onValueChange={(v) => set("anio", v)}
+                  placeholder="Seleccionar año"
+                  searchPlaceholder="Buscar año..."
+                />
               </div>
               <div className="space-y-2">
                 <Label>Precio (USD) *</Label>
-                <Input type="number" value={form.precio} onChange={e => set("precio", e.target.value)} required min={0} placeholder="15000" />
+                <Input type="number" value={form.precio} onChange={(e) => set("precio", e.target.value)} required min={1} placeholder="15000" />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Kilometraje</Label>
-                <Input type="number" value={form.kilometraje} onChange={e => set("kilometraje", e.target.value)} min={0} placeholder="50000" />
+                <Input type="number" value={form.kilometraje} onChange={(e) => set("kilometraje", e.target.value)} min={0} placeholder="50000" />
               </div>
               <div className="space-y-2">
                 <Label>País</Label>
-                <Select value={selectedCountry} onValueChange={v => { setSelectedCountry(v); setSelectedState(""); }}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar país" /></SelectTrigger>
-                  <SelectContent>
-                    {countryList.map(c => <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Provincia / Estado</Label>
-                <Select value={selectedState} onValueChange={setSelectedState} disabled={!selectedCountry || states.length === 0}>
-                  <SelectTrigger><SelectValue placeholder={!selectedCountry ? "Selecciona un país primero" : states.length === 0 ? "Sin provincias" : "Seleccionar"} /></SelectTrigger>
-                  <SelectContent>
-                    {states.map(s => <SelectItem key={s.code} value={s.code}>{s.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Combobox
+                  options={countryOptions}
+                  value={selectedCountry}
+                  onValueChange={(v) => { setSelectedCountry(v); setSelectedState(""); }}
+                  placeholder="Seleccionar país"
+                  searchPlaceholder="Buscar país..."
+                />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
+                <Label>Provincia / Estado</Label>
+                <Combobox
+                  options={stateOptions}
+                  value={selectedState}
+                  onValueChange={setSelectedState}
+                  placeholder={!selectedCountry ? "Selecciona país primero" : states.length === 0 ? "Sin provincias" : "Seleccionar"}
+                  searchPlaceholder="Buscar provincia..."
+                  disabled={!selectedCountry || states.length === 0}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label>Combustible</Label>
-                <Select value={form.tipo_combustible} onValueChange={v => set("tipo_combustible", v)}>
+                <Select value={form.tipo_combustible} onValueChange={(v) => set("tipo_combustible", v)}>
                   <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Gasolina">Gasolina</SelectItem>
@@ -165,21 +240,22 @@ const CreateListing = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Transmisión</Label>
-                <Select value={form.transmision} onValueChange={v => set("transmision", v)}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Manual">Manual</SelectItem>
-                    <SelectItem value="Automática">Automática</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Transmisión</Label>
+              <Select value={form.transmision} onValueChange={(v) => set("transmision", v)}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Manual">Manual</SelectItem>
+                  <SelectItem value="Automática">Automática</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
               <Label>Descripción</Label>
-              <Textarea value={form.descripcion} onChange={e => set("descripcion", e.target.value)} placeholder="Describe el estado del vehículo, características especiales..." rows={4} />
+              <Textarea value={form.descripcion} onChange={(e) => set("descripcion", e.target.value)} placeholder="Describe el estado del vehículo, características especiales..." rows={4} />
             </div>
 
             <div className="space-y-2">
@@ -187,7 +263,11 @@ const CreateListing = () => {
               <ImageUpload userId={user.id} onImagesUploaded={setImageUrls} />
             </div>
 
-            <Button type="submit" className="w-full rounded-full active:scale-[0.98] transition-transform" disabled={loading}>
+            <Button
+              type="submit"
+              className="w-full rounded-full active:scale-[0.98] transition-transform"
+              disabled={loading || !selectedMake || !selectedModel || !form.anio || !form.precio}
+            >
               {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publicando...</> : "Publicar Vehículo"}
             </Button>
           </form>

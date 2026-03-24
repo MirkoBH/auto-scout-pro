@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import CreateListing from "./pages/CreateListing";
 import VehicleDetail from "./pages/VehicleDetail";
 import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/publicar" element={<CreateListing />} />
             <Route path="/vehiculo/:id" element={<VehicleDetail />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/perfil" element={<Profile />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

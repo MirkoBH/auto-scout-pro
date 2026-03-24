@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Calendar, Fuel, Gauge, MapPin, Cog, Shield, AlertTriangle, Sparkles } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from "@/components/ui/carousel";
 import { Skeleton } from "@/components/ui/skeleton";
+import QuestionsSection from "@/components/QuestionsSection";
 
 const estadoColor: Record<string, string> = {
   Excelente: "bg-success text-success-foreground",
@@ -129,6 +130,9 @@ const VehicleDetail = () => {
             <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{pub.descripcion}</p>
           </div>
         )}
+
+        {/* Questions Section */}
+        <QuestionsSection publicacionId={pub.id} sellerId={pub.user_id} />
       </div>
     </div>
   );
