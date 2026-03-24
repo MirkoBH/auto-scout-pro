@@ -16,21 +16,30 @@ export type Database = {
     Tables: {
       app_users: {
         Row: {
+          avatar_url: string | null
           created_at: string | null
           email: string | null
           id: string
+          nombre: string | null
+          telefono: string | null
           type: Database["public"]["Enums"]["user_type_enum"]
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string | null
           email?: string | null
           id: string
+          nombre?: string | null
+          telefono?: string | null
           type?: Database["public"]["Enums"]["user_type_enum"]
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
+          nombre?: string | null
+          telefono?: string | null
           type?: Database["public"]["Enums"]["user_type_enum"]
         }
         Relationships: []
@@ -58,6 +67,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      preguntas: {
+        Row: {
+          created_at: string | null
+          id: string
+          pregunta: string
+          publicacion_id: number
+          respondido_at: string | null
+          respondido_por: string | null
+          respuesta: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          pregunta: string
+          publicacion_id: number
+          respondido_at?: string | null
+          respondido_por?: string | null
+          respuesta?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          pregunta?: string
+          publicacion_id?: number
+          respondido_at?: string | null
+          respondido_por?: string | null
+          respuesta?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "preguntas_publicacion_id_fkey"
+            columns: ["publicacion_id"]
+            isOneToOne: false
+            referencedRelation: "publicaciones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       publicaciones: {
         Row: {
