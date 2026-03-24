@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Car, Plus, LayoutDashboard, LogOut, LogIn } from "lucide-react";
+import { Car, Plus, LayoutDashboard, LogOut, LogIn, UserCircle } from "lucide-react";
 
 const Navbar = () => {
   const { user, userType, signOut } = useAuth();
@@ -33,6 +33,9 @@ const Navbar = () => {
                   </Button>
                 </>
               )}
+              <Button variant="ghost" size="sm" asChild className="rounded-full">
+                <Link to="/perfil"><UserCircle className="mr-1.5 h-4 w-4" /> Perfil</Link>
+              </Button>
               <Button variant="ghost" size="sm" onClick={handleSignOut} className="rounded-full">
                 <LogOut className="mr-1.5 h-4 w-4" /> Salir
               </Button>
