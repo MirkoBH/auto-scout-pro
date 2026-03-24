@@ -1,84 +1,125 @@
 
 
-# Plan: Rediseno Visual Apple HIG
+# Plan: Perfil de Usuario, Preguntas en Publicaciones, Validaciones y API de Autos
 
 ## Overview
 
-Aplicar la identidad visual Apple HIG completa: nueva paleta (#D32F45 primario, #F5F5F5 fondo, #000/#666 texto), glassmorphism en header, bordes redondeados 16px, skeleton loaders, filtros drawer en movil, hover scale en cards, y animaciones de entrada stagger.
+Cuatro bloques de funcionalidad: (1) gestion de perfil con edicion de nombre/telefono y cambio de email con verificacion, (2) sistema de preguntas y respuestas estilo Mercado Libre en cada publicacion, (3) validaciones robustas en filtros y formulario de publicacion (sin negativos, ano limitado, dropdowns con busqueda), (4) integracion con API-Ninjas para marcas y modelos de autos con seleccion en cascada.
+
+---
+
+## 1. Gestion de Perfil
+
+### Database Migration
+- Add columns to `app_users`: `nombre text`, `telefono text`, `avatar_url text`
+- RLS: users can update their own profile (already exists)
+
+### New Page: `src/pages/Profile.tsx`
+- Formulario con campos: nombre, telefono, email (read-only, con boton "Cambiar email")
+- Cambio de email usa `supabase.auth.updateUser({ email: newEmail })` que envia verificacion automatica
+- Boton guardar para nombre/telefono via `supabase.from("app_users").update(...)`
+
+### Navbar Update
+- Agregar link a "/perfil" con icono de usuario cuando esta autenticado
+
+### Route in App.tsx
+- Add `/perfil` route
+
+---
+
+## 2. Sistema de Preguntas y Respuestas
+
+### Database Migration
+```sql
+create table public.preguntas (
+  id uuid primary key default gen_random_uuid(),
+  publicacion_id bigint not null references publicaciones(id) on delete cascade,
+  user_id uuid not null,
+  pregunta text not null,
+  respuesta text,
+  respondido_por uuid,
+  created_at timestamptz default now(),
+  respondido_at timestamptz
+);
+-- RLS: anyone can SELECT, authenticated buyers can INSERT, 
+-- only the publication owner can UPDATE (to add response)
+```
+
+### VehicleDetail.tsx Update
+- Add "Preguntas" section below description
+- Buyers see a text input to submit questions
+- Seller of the listing sees "Responder" button on unanswered questions
+- All users see answered Q&A pairs
+
+### New Component: `src/components/QuestionsSection.tsx`
+- Fetch questions for the publication
+- Display Q&A list
+- Input form for buyers (hidden if not logged in or if user is the seller)
+- Response form for seller only
+
+---
+
+## 3. Validaciones y Dropdowns con Busqueda
+
+### Combobox Component: `src/components/ui/combobox.tsx`
+- Dropdown con input de texto para filtrar opciones (basado en Command/Popover existentes)
+- Reutilizable para: ano, pais, provincia, marca, modelo
+
+### CreateListing.tsx Changes
+- Ano: Combobox con opciones de 1886 a ano actual, no permite valores fuera de rango
+- Precio: min=1, no negativos
+- Kilometraje: min=0, no negativos
+- Marca: Combobox que carga marcas desde edge function (API-Ninjas)
+- Modelo: Combobox que carga modelos al seleccionar marca
+- Pais y Provincia: reemplazar Select por Combobox con filtrado de texto
+
+### VehicleFilters.tsx Changes
+- Precio min/max: min=0, no negativos
+- Ano min: Combobox con rango 1886-actual
+- Marca, Pais, Provincia: Combobox con filtrado
+
+---
+
+## 4. Integracion API-Ninjas (Marcas y Modelos)
+
+### API Key Secret
+- Solicitar al usuario su API key de API-Ninjas y guardarla como secret `API_NINJAS_KEY`
+
+### Edge Function: `supabase/functions/car-api/index.ts`
+- Proxy seguro que llama a `api.api-ninjas.com/v1/carmakes` y `/v1/carmodels?make=X`
+- Acepta query params `endpoint` ("makes" o "models") y `make` (para modelos)
+- Devuelve array de strings
+
+### Hook: `src/hooks/useCarApi.ts`
+- `useCarMakes()`: fetch makes via edge function, cache con react-query
+- `useCarModels(make)`: fetch models para una marca seleccionada
+
+---
+
+## Files to Create
+1. `src/pages/Profile.tsx` - Pagina de perfil
+2. `src/components/QuestionsSection.tsx` - Preguntas y respuestas
+3. `src/components/ui/combobox.tsx` - Dropdown con busqueda
+4. `supabase/functions/car-api/index.ts` - Proxy para API-Ninjas
+5. `src/hooks/useCarApi.ts` - Hook para marcas/modelos
 
 ## Files to Modify
+1. `src/App.tsx` - Nueva ruta /perfil
+2. `src/components/Navbar.tsx` - Link a perfil
+3. `src/pages/VehicleDetail.tsx` - Seccion de preguntas
+4. `src/pages/CreateListing.tsx` - Comboboxes y validaciones
+5. `src/components/VehicleFilters.tsx` - Comboboxes y validaciones
 
-### 1. `src/index.css` - Nueva paleta de colores
-- Primario: `#D32F45` (rojo) en lugar del azul actual
-- Background: `#F5F5F5`, Cards: `#FFFFFF`
-- Texto: `#000000` titulos, `#666666` cuerpo
-- Border radius: `1rem` (16px)
-- Mantener dark mode con equivalentes oscuros
-
-### 2. `tailwind.config.ts` - Radius y animaciones
-- Cambiar `--radius` a `1rem`
-- Agregar animaciones: `stagger-fade-in`, `scale-press` (0.98), `slide-up` para drawer
-- Agregar clase `.glass` para backdrop-blur
-
-### 3. `src/components/Navbar.tsx` - Glassmorphism header
-- Fondo con `bg-white/70 backdrop-blur-xl` en lugar de `bg-card/80`
-- Bordes mas sutiles, efecto blur mas pronunciado
-
-### 4. `src/components/VehicleCard.tsx` - Tarjetas Apple-style
-- Aspect ratio 4:3 en imagen
-- Hover `scale-[1.02]` con transicion suave
-- Sombras muy suaves, bordes 16px
-- Badge "Analizado por IA" con estilo refinado
-- Skeleton loader como placeholder
-
-### 5. `src/components/VehicleFilters.tsx` - Drawer en movil
-- Desktop: mantener layout horizontal
-- Movil: usar `Drawer` component (vaul) que sube desde abajo
-- Boton trigger con icono de filtros
-- Usar `useIsMobile()` hook existente
-
-### 6. `src/pages/Index.tsx` - Hero y grid mejorados
-- Hero con gradiente sutil, tipografia mas grande
-- Grid con animacion stagger en cards (delay incremental)
-- Skeleton screens durante carga en vez de spinner
-
-### 7. `src/pages/VehicleDetail.tsx` - Detalles refinados
-- Carousel con bordes 16px y transiciones suaves
-- Seccion "Analisis Inteligente" con acento #D32F45 para alertas
-- Specs cards con glassmorphism sutil
-
-### 8. `src/pages/Auth.tsx` - Login Apple-style
-- Card con glassmorphism
-- Botones de rol con transicion `scale-[0.98]` al presionar
-- Bordes mas redondeados
-
-### 9. `src/pages/CreateListing.tsx` - Formulario refinado
-- Card con sombra suave y radius 16px
-- Inputs con bordes finos `#666`, foco con ring sutil rojo
-- Selector de imagenes con borde rojo al seleccionar
-
-### 10. `src/pages/Dashboard.tsx` - Estadisticas con glass
-- Cards de stats con glassmorphism
-- Lista de publicaciones mas limpia
-
-### 11. `src/components/ImageUpload.tsx` - Miniaturas mejoradas
-- Borde rojo (#D32F45) en imagen seleccionada/activa
-- Thumbnails con radius 12px
-
-## Technical Details
-
-- No se agregan dependencias nuevas (Drawer ya existe via vaul)
-- `useIsMobile()` hook ya existe para responsive filters
-- Skeleton component ya disponible en `ui/skeleton.tsx`
-- Animaciones via Tailwind keyframes, sin Framer Motion (mantener bundle ligero)
-- Colores se definen en CSS variables para consistencia light/dark
+## Database Migrations
+1. Add profile columns to `app_users`
+2. Create `preguntas` table with RLS
 
 ## Implementation Order
-
-1. CSS variables y tailwind config (paleta + radius + animaciones)
-2. Navbar glassmorphism
-3. VehicleCard rediseno
-4. VehicleFilters drawer movil
-5. Index page (hero, skeletons, stagger)
-6. Paginas restantes (Auth, Detail, CreateListing, Dashboard)
+1. Secret de API-Ninjas + Edge function car-api
+2. Combobox component
+3. Migracion DB (profile columns + preguntas table)
+4. Profile page + route + navbar
+5. CreateListing con comboboxes y validaciones
+6. VehicleFilters con comboboxes y validaciones
+7. QuestionsSection + integracion en VehicleDetail
 
