@@ -18,11 +18,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    const url = new URL(req.url);
-    const endpoint = url.searchParams.get("endpoint") || "makes";
-    const make = url.searchParams.get("make") || "";
+    let endpoint = "makes";
+    let make = "";
 
-    let apiUrl: string;
+    // Support both GET query params and POST body
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        endpoint = body.endpoint || "makes";
+        make = body.make || "";
+      } catch {
+        // ignore parse errors, use defaults
+      }
+    } else {
+      const url = new URL(req.url);
+      endpoint = url.searchParams.get("endpoint") || "makes";
+      make = url.searchParams.get("make") || "";
+    }
     if (endpoint === "models" && make) {
       apiUrl = `https://api.api-ninjas.com/v1/carmodels?make=${encodeURIComponent(make)}`;
     } else {
