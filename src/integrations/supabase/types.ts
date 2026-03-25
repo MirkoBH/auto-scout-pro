@@ -44,6 +44,35 @@ export type Database = {
         }
         Relationships: []
       }
+      favoritos: {
+        Row: {
+          created_at: string | null
+          id: string
+          publicacion_id: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          publicacion_id: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          publicacion_id?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favoritos_publicacion_id_fkey"
+            columns: ["publicacion_id"]
+            isOneToOne: false
+            referencedRelation: "publicaciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       imagenes_publicacion: {
         Row: {
           created_at: string
@@ -121,6 +150,9 @@ export type Database = {
           marca: string
           modelo: string
           precio: number
+          precio_estimado_max: number | null
+          precio_estimado_min: number | null
+          puntaje: number | null
           tipo_combustible: string | null
           transmision: string | null
           ubicacion: string | null
@@ -138,6 +170,9 @@ export type Database = {
           marca: string
           modelo: string
           precio: number
+          precio_estimado_max?: number | null
+          precio_estimado_min?: number | null
+          puntaje?: number | null
           tipo_combustible?: string | null
           transmision?: string | null
           ubicacion?: string | null
@@ -155,6 +190,9 @@ export type Database = {
           marca?: string
           modelo?: string
           precio?: number
+          precio_estimado_max?: number | null
+          precio_estimado_min?: number | null
+          puntaje?: number | null
           tipo_combustible?: string | null
           transmision?: string | null
           ubicacion?: string | null
