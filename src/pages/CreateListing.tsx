@@ -119,18 +119,21 @@ const CreateListing = () => {
         try {
           const { data: aiData } = await supabase.functions.invoke("assess-vehicle", {
             body: {
-              publicacion_id: pub.id,
               marca: selectedMake,
               modelo: selectedModel,
               anio,
               kilometraje: km,
               descripcion: form.descripcion || "",
+              imagen_urls: imageUrls,
             },
           });
           if (aiData?.estado) {
             await supabase.from("publicaciones").update({
               estado_vehiculo: aiData.estado,
               estimacion_danos: aiData.estimacion_danos,
+              puntaje: aiData.puntaje,
+              precio_estimado_min: aiData.precio_estimado_min,
+              precio_estimado_max: aiData.precio_estimado_max,
             }).eq("id", pub.id);
           }
         } catch {

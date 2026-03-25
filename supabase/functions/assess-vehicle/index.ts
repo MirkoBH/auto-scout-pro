@@ -10,11 +10,17 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { marca, modelo, anio, kilometraje, descripcion } = await req.json();
+    const { marca, modelo, anio, kilometraje, descripcion, imagen_urls } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    const prompt = `Eres un experto tasador de autos usados. Evalúa el siguiente vehículo y responde SOLAMENTE con el JSON solicitado.
+    // Build image content parts for multimodal
+    const imageContent: any[] = (imagen_urls || []).slice(0, 5).map((url: string) => ({
+      type: "image_url",
+      image_url: { url },
+    }));
+
+    const textPrompt = `Eres un experto tasador de autos usados. Evalúa el siguiente vehículo considerando todos los datos proporcionados y las imágenes adjuntas.
 
 Vehículo:
 - Marca: ${marca}
@@ -23,7 +29,15 @@ Vehículo:
 - Kilometraje: ${kilometraje ? kilometraje + " km" : "No especificado"}
 - Descripción del vendedor: ${descripcion || "Sin descripción"}
 
-Responde con la evaluación del vehículo.`;
+INSTRUCCIONES:
+1. Analiza las fotos del vehículo buscando daños visibles: rayones, abolladuras, óxido, partes faltantes, desgaste interior, etc.
+2. Identifica qué partes específicas del auto están dañadas (ej: paragolpes delantero, puerta trasera derecha, capó, etc.)
+3. Considera la marca, modelo, año, kilometraje y estado visible para dar un rango de precio estimado en USD.
+4. Da una valoración general del 1 al 100.
+
+Responde con la evaluación completa del vehículo.`;
+
+    const userContent: any[] = [{ type: "text", text: textPrompt }, ...imageContent];
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -32,16 +46,17 @@ Responde con la evaluación del vehículo.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "Eres un tasador experto de vehículos usados." },
-          { role: "user", content: prompt },
+          { role: "system", content: "Eres un tasador experto de vehículos usados con capacidad de análisis visual de imágenes." },
+          { role: "user", content: userContent },
         ],
         tools: [
           {
             type: "function",
             function: {
               name: "vehicle_assessment",
-              description: "Return a structured vehicle condition assessment",
+              description: "Return a structured vehicle condition assessment with price range",
               parameters: {
                 type: "object",
                 properties: {
@@ -52,14 +67,22 @@ Responde con la evaluación del vehículo.`;
                   },
                   estimacion_danos: {
                     type: "string",
-                    description: "Brief description of estimated damages or wear in Spanish",
+                    description: "Detailed description of visible damages, affected parts, and wear in Spanish. If no damage, say so.",
                   },
                   puntaje: {
                     type: "number",
-                    description: "Score from 1 to 100",
+                    description: "Quality score from 1 to 100",
+                  },
+                  precio_estimado_min: {
+                    type: "number",
+                    description: "Minimum estimated price in USD",
+                  },
+                  precio_estimado_max: {
+                    type: "number",
+                    description: "Maximum estimated price in USD",
                   },
                 },
-                required: ["estado", "estimacion_danos", "puntaje"],
+                required: ["estado", "estimacion_danos", "puntaje", "precio_estimado_min", "precio_estimado_max"],
                 additionalProperties: false,
               },
             },
