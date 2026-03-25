@@ -35,6 +35,7 @@ Deno.serve(async (req) => {
       endpoint = url.searchParams.get("endpoint") || "makes";
       make = url.searchParams.get("make") || "";
     }
+    let apiUrl: string;
     if (endpoint === "models" && make) {
       apiUrl = `https://api.api-ninjas.com/v1/carmodels?make=${encodeURIComponent(make)}`;
     } else {
