@@ -1,125 +1,114 @@
 
 
-# Plan: Perfil de Usuario, Preguntas en Publicaciones, Validaciones y API de Autos
+## Plan: Editar publicaciones, Comparar vehículos y Lista de deseados
 
-## Overview
+### Resumen
 
-Cuatro bloques de funcionalidad: (1) gestion de perfil con edicion de nombre/telefono y cambio de email con verificacion, (2) sistema de preguntas y respuestas estilo Mercado Libre en cada publicacion, (3) validaciones robustas en filtros y formulario de publicacion (sin negativos, ano limitado, dropdowns con busqueda), (4) integracion con API-Ninjas para marcas y modelos de autos con seleccion en cascada.
-
----
-
-## 1. Gestion de Perfil
-
-### Database Migration
-- Add columns to `app_users`: `nombre text`, `telefono text`, `avatar_url text`
-- RLS: users can update their own profile (already exists)
-
-### New Page: `src/pages/Profile.tsx`
-- Formulario con campos: nombre, telefono, email (read-only, con boton "Cambiar email")
-- Cambio de email usa `supabase.auth.updateUser({ email: newEmail })` que envia verificacion automatica
-- Boton guardar para nombre/telefono via `supabase.from("app_users").update(...)`
-
-### Navbar Update
-- Agregar link a "/perfil" con icono de usuario cuando esta autenticado
-
-### Route in App.tsx
-- Add `/perfil` route
+Se implementan tres funcionalidades principales:
+1. **Editar publicaciones** -- Los vendedores pueden modificar sus publicaciones y la IA re-evalúa el vehículo (ahora con análisis de imágenes, rango de precio estimado y valoración detallada)
+2. **Comparar vehículos** -- Los compradores pueden seleccionar 2 publicaciones y ver una comparación lado a lado
+3. **Lista de deseados** -- Los compradores pueden guardar publicaciones que les interesen
 
 ---
 
-## 2. Sistema de Preguntas y Respuestas
+### 1. Base de datos
 
-### Database Migration
+**Nueva tabla `favoritos`:**
 ```sql
-create table public.preguntas (
-  id uuid primary key default gen_random_uuid(),
-  publicacion_id bigint not null references publicaciones(id) on delete cascade,
-  user_id uuid not null,
-  pregunta text not null,
-  respuesta text,
-  respondido_por uuid,
-  created_at timestamptz default now(),
-  respondido_at timestamptz
+CREATE TABLE public.favoritos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  publicacion_id bigint NOT NULL REFERENCES publicaciones(id) ON DELETE CASCADE,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(user_id, publicacion_id)
 );
--- RLS: anyone can SELECT, authenticated buyers can INSERT, 
--- only the publication owner can UPDATE (to add response)
+ALTER TABLE public.favoritos ENABLE ROW LEVEL SECURITY;
+-- Select own
+CREATE POLICY "Users can view own favoritos" ON public.favoritos FOR SELECT TO authenticated USING (user_id = auth.uid());
+-- Insert own
+CREATE POLICY "Users can insert own favoritos" ON public.favoritos FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+-- Delete own
+CREATE POLICY "Users can delete own favoritos" ON public.favoritos FOR DELETE TO authenticated USING (user_id = auth.uid());
 ```
 
-### VehicleDetail.tsx Update
-- Add "Preguntas" section below description
-- Buyers see a text input to submit questions
-- Seller of the listing sees "Responder" button on unanswered questions
-- All users see answered Q&A pairs
-
-### New Component: `src/components/QuestionsSection.tsx`
-- Fetch questions for the publication
-- Display Q&A list
-- Input form for buyers (hidden if not logged in or if user is the seller)
-- Response form for seller only
+**Nuevas columnas en `publicaciones`:**
+```sql
+ALTER TABLE publicaciones
+  ADD COLUMN IF NOT EXISTS precio_estimado_min numeric,
+  ADD COLUMN IF NOT EXISTS precio_estimado_max numeric,
+  ADD COLUMN IF NOT EXISTS puntaje integer;
+```
 
 ---
 
-## 3. Validaciones y Dropdowns con Busqueda
+### 2. Edge Function `assess-vehicle` mejorada
 
-### Combobox Component: `src/components/ui/combobox.tsx`
-- Dropdown con input de texto para filtrar opciones (basado en Command/Popover existentes)
-- Reutilizable para: ano, pais, provincia, marca, modelo
-
-### CreateListing.tsx Changes
-- Ano: Combobox con opciones de 1886 a ano actual, no permite valores fuera de rango
-- Precio: min=1, no negativos
-- Kilometraje: min=0, no negativos
-- Marca: Combobox que carga marcas desde edge function (API-Ninjas)
-- Modelo: Combobox que carga modelos al seleccionar marca
-- Pais y Provincia: reemplazar Select por Combobox con filtrado de texto
-
-### VehicleFilters.tsx Changes
-- Precio min/max: min=0, no negativos
-- Ano min: Combobox con rango 1886-actual
-- Marca, Pais, Provincia: Combobox con filtrado
+- Recibir `imagen_urls` (array de URLs de las fotos del vehículo) ademas de los datos actuales.
+- Usar un modelo multimodal (`google/gemini-2.5-flash`) para enviar las imágenes como URLs en el prompt.
+- El prompt indicará al modelo que analice las fotos buscando daños visibles, partes afectadas, y que considere marca/modelo/año/km para dar:
+  - `estado`: Excelente/Bueno/Regular/Malo
+  - `estimacion_danos`: descripción de daños visibles con partes afectadas
+  - `puntaje`: 1-100
+  - `precio_estimado_min`: precio mínimo estimado en USD
+  - `precio_estimado_max`: precio máximo estimado en USD
+- Tool calling schema actualizado con los nuevos campos.
 
 ---
 
-## 4. Integracion API-Ninjas (Marcas y Modelos)
+### 3. Página de edición `EditListing.tsx`
 
-### API Key Secret
-- Solicitar al usuario su API key de API-Ninjas y guardarla como secret `API_NINJAS_KEY`
-
-### Edge Function: `supabase/functions/car-api/index.ts`
-- Proxy seguro que llama a `api.api-ninjas.com/v1/carmakes` y `/v1/carmodels?make=X`
-- Acepta query params `endpoint` ("makes" o "models") y `make` (para modelos)
-- Devuelve array de strings
-
-### Hook: `src/hooks/useCarApi.ts`
-- `useCarMakes()`: fetch makes via edge function, cache con react-query
-- `useCarModels(make)`: fetch models para una marca seleccionada
+- Nueva ruta `/editar/:id` en `App.tsx`.
+- Carga los datos existentes de la publicación y sus imágenes.
+- Reutiliza la misma estructura de formulario que `CreateListing.tsx` (marcas, modelos, comboboxes, imágenes).
+- Al guardar: actualiza `publicaciones`, actualiza `imagenes_publicacion`, y re-invoca `assess-vehicle` con los datos e imágenes actualizadas.
+- Persiste los nuevos campos (`precio_estimado_min`, `precio_estimado_max`, `puntaje`) en la tabla.
+- Accesible desde el Dashboard (botón editar en cada publicación).
 
 ---
 
-## Files to Create
-1. `src/pages/Profile.tsx` - Pagina de perfil
-2. `src/components/QuestionsSection.tsx` - Preguntas y respuestas
-3. `src/components/ui/combobox.tsx` - Dropdown con busqueda
-4. `supabase/functions/car-api/index.ts` - Proxy para API-Ninjas
-5. `src/hooks/useCarApi.ts` - Hook para marcas/modelos
+### 4. Comparar vehículos
 
-## Files to Modify
-1. `src/App.tsx` - Nueva ruta /perfil
-2. `src/components/Navbar.tsx` - Link a perfil
-3. `src/pages/VehicleDetail.tsx` - Seccion de preguntas
-4. `src/pages/CreateListing.tsx` - Comboboxes y validaciones
-5. `src/components/VehicleFilters.tsx` - Comboboxes y validaciones
+- **Estado global de comparación**: Context o estado en `Index.tsx` que guarda hasta 2 IDs seleccionados.
+- **Checkbox en `VehicleCard`**: Cuando el usuario es comprador, muestra un checkbox/botón para añadir a comparación.
+- **Barra flotante**: Cuando hay 1-2 seleccionados, aparece un banner fijo abajo con "Comparar (2)" que enlaza a la página de comparación.
+- **Nueva página `Compare.tsx`** (`/comparar?ids=1,2`):
+  - Carga las 2 publicaciones con sus imágenes.
+  - Tabla lado a lado mostrando: imagen principal, marca/modelo, año, precio, km, combustible, transmisión, ubicación, estado IA, puntaje, rango de precio estimado, descripción de daños.
+  - Resalta diferencias con colores (mejor/peor valor).
 
-## Database Migrations
-1. Add profile columns to `app_users`
-2. Create `preguntas` table with RLS
+---
 
-## Implementation Order
-1. Secret de API-Ninjas + Edge function car-api
-2. Combobox component
-3. Migracion DB (profile columns + preguntas table)
-4. Profile page + route + navbar
-5. CreateListing con comboboxes y validaciones
-6. VehicleFilters con comboboxes y validaciones
-7. QuestionsSection + integracion en VehicleDetail
+### 5. Lista de deseados
+
+- **Botón corazón** en `VehicleCard` y `VehicleDetail`: toggle para agregar/quitar de favoritos (insert/delete en tabla `favoritos`).
+- **Hook `useFavorites`**: carga los favoritos del usuario, expone `toggleFavorite(pubId)` e `isFavorite(pubId)`.
+- **Página `Favorites.tsx`** (`/favoritos`): lista las publicaciones guardadas con sus cards.
+- **Link en Navbar** para compradores: icono corazón con contador.
+
+---
+
+### 6. Visualización de datos IA mejorados
+
+- En `VehicleDetail.tsx`: mostrar rango de precio estimado y puntaje junto al badge de estado.
+- En `Dashboard.tsx`: mostrar puntaje en la lista de publicaciones del vendedor.
+
+---
+
+### Archivos a crear/modificar
+
+| Archivo | Acción |
+|---|---|
+| Migración SQL | Crear tabla `favoritos` + columnas en `publicaciones` |
+| `supabase/functions/assess-vehicle/index.ts` | Agregar análisis de imágenes, modelo multimodal, nuevos campos |
+| `src/pages/EditListing.tsx` | Crear -- formulario de edición con re-evaluación IA |
+| `src/pages/Compare.tsx` | Crear -- comparación lado a lado |
+| `src/pages/Favorites.tsx` | Crear -- lista de deseados |
+| `src/hooks/useFavorites.ts` | Crear -- lógica de favoritos |
+| `src/App.tsx` | Agregar rutas `/editar/:id`, `/comparar`, `/favoritos` |
+| `src/components/Navbar.tsx` | Link a favoritos para compradores |
+| `src/components/VehicleCard.tsx` | Botón favorito + checkbox comparar |
+| `src/pages/VehicleDetail.tsx` | Botón favorito + mostrar precio estimado/puntaje |
+| `src/pages/Dashboard.tsx` | Botón editar en cada publicación |
+| `src/pages/Index.tsx` | Estado de comparación + barra flotante |
+| `src/pages/CreateListing.tsx` | Persistir nuevos campos IA al crear |
 
