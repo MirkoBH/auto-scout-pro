@@ -1,11 +1,13 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Car, Plus, LayoutDashboard, LogOut, LogIn, UserCircle } from "lucide-react";
+import { Car, Plus, LayoutDashboard, LogOut, LogIn, UserCircle, Heart } from "lucide-react";
+import { useFavorites } from "@/hooks/useFavorites";
 
 const Navbar = () => {
   const { user, userType, signOut } = useAuth();
   const navigate = useNavigate();
+  const { count } = useFavorites();
 
   const handleSignOut = async () => {
     await signOut();
@@ -32,6 +34,16 @@ const Navbar = () => {
                     <Link to="/publicar"><Plus className="mr-1.5 h-4 w-4" /> Publicar</Link>
                   </Button>
                 </>
+              )}
+              {userType === "Buyer" && (
+                <Button variant="ghost" size="sm" asChild className="rounded-full relative">
+                  <Link to="/favoritos">
+                    <Heart className="mr-1.5 h-4 w-4" /> Favoritos
+                    {count > 0 && (
+                      <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">{count}</span>
+                    )}
+                  </Link>
+                </Button>
               )}
               <Button variant="ghost" size="sm" asChild className="rounded-full">
                 <Link to="/perfil"><UserCircle className="mr-1.5 h-4 w-4" /> Perfil</Link>
