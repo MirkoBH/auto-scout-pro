@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { publicacionesService } from "@/services";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,20 +17,24 @@ const Dashboard = () => {
 
   const fetchListings = async () => {
     if (!user) return;
-    const { data } = await supabase.from("publicaciones").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
-    setListings(data || []);
+    try {
+      const data = await publicacionesService.getByUserId(user.id);
+      setListings(data);
+    } catch {
+      // silent
+    }
     setLoading(false);
   };
 
   useEffect(() => { fetchListings(); }, [user]);
 
   const handleDelete = async (id: number) => {
-    const { error } = await supabase.from("publicaciones").delete().eq("id", id);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
+    try {
+      await publicacionesService.delete(id);
       toast({ title: "Publicación eliminada" });
       fetchListings();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
 

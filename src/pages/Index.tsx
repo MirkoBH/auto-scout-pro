@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { publicacionesService, imagenesService } from "@/services";
+import type { Publicacion, ImagenPublicacion } from "@/services";
 import VehicleCard from "@/components/VehicleCard";
 import VehicleFilters, { Filters } from "@/components/VehicleFilters";
 import { Search, GitCompareArrows } from "lucide-react";
@@ -9,14 +10,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const emptyFilters: Filters = { search: "", marca: "", minPrecio: "", maxPrecio: "", anioMin: "", combustible: "", transmision: "", pais: "", provincia: "" };
-
-interface Publicacion {
-  id: number; marca: string; modelo: string; anio: number; precio: number;
-  ubicacion: string | null; kilometraje: number | null; tipo_combustible: string | null;
-  transmision: string | null; estado_vehiculo: string | null;
-}
-
-interface ImagenPublicacion { publicacion_id: string; imagen_ids: string[]; }
 
 const CardSkeleton = () => (
   <div className="rounded-2xl overflow-hidden bg-card shadow-sm">
@@ -41,12 +34,12 @@ const Index = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [{ data: pubs }, { data: imgs }] = await Promise.all([
-        supabase.from("publicaciones").select("id, marca, modelo, anio, precio, ubicacion, kilometraje, tipo_combustible, transmision, estado_vehiculo").order("created_at", { ascending: false }),
-        supabase.from("imagenes_publicacion").select("publicacion_id, imagen_ids"),
+      const [pubs, imgs] = await Promise.all([
+        publicacionesService.list(),
+        imagenesService.listAll(),
       ]);
-      setPublicaciones((pubs as Publicacion[]) || []);
-      setImagenes((imgs as ImagenPublicacion[]) || []);
+      setPublicaciones(pubs);
+      setImagenes(imgs);
       setLoading(false);
     };
     fetchData();
@@ -155,7 +148,6 @@ const Index = () => {
         )}
       </section>
 
-      {/* Compare floating bar */}
       {compareIds.length > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border shadow-xl rounded-full px-6 py-3 flex items-center gap-4 animate-fade-in">
           <GitCompareArrows className="h-5 w-5 text-primary" />

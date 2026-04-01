@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { publicacionesService, imagenesService } from "@/services";
+import type { Publicacion } from "@/services";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,30 +15,23 @@ const estadoColor: Record<string, string> = {
   Malo: "bg-destructive text-destructive-foreground",
 };
 
-interface Pub {
-  id: number; marca: string; modelo: string; anio: number; precio: number;
-  kilometraje: number | null; tipo_combustible: string | null; transmision: string | null;
-  ubicacion: string | null; estado_vehiculo: string | null; estimacion_danos: string | null;
-  puntaje: number | null; precio_estimado_min: number | null; precio_estimado_max: number | null;
-}
-
 const Compare = () => {
   const [params] = useSearchParams();
   const ids = (params.get("ids") || "").split(",").map(Number).filter(Boolean);
-  const [vehicles, setVehicles] = useState<Pub[]>([]);
+  const [vehicles, setVehicles] = useState<Publicacion[]>([]);
   const [images, setImages] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (ids.length === 0) { setLoading(false); return; }
     (async () => {
-      const [{ data: pubs }, { data: imgs }] = await Promise.all([
-        supabase.from("publicaciones").select("*").in("id", ids),
-        supabase.from("imagenes_publicacion").select("publicacion_id, imagen_ids"),
+      const [pubs, imgs] = await Promise.all([
+        publicacionesService.getByIds(ids),
+        imagenesService.listAll(),
       ]);
-      setVehicles((pubs || []) as Pub[]);
+      setVehicles(pubs);
       const map: Record<string, string> = {};
-      (imgs || []).forEach((img: any) => { if (img.imagen_ids?.length > 0) map[img.publicacion_id] = img.imagen_ids[0]; });
+      imgs.forEach((img) => { if (img.imagen_ids?.length > 0) map[img.publicacion_id] = img.imagen_ids[0]; });
       setImages(map);
       setLoading(false);
     })();
@@ -57,7 +51,7 @@ const Compare = () => {
     </div>
   );
 
-  const rows: { label: string; icon: React.ReactNode; get: (p: Pub) => string; better?: "higher" | "lower" }[] = [
+  const rows: { label: string; icon: React.ReactNode; get: (p: Publicacion) => string; better?: "higher" | "lower" }[] = [
     { label: "Precio", icon: <TrendingUp className="h-4 w-4" />, get: p => `$${Number(p.precio).toLocaleString()}`, better: "lower" },
     { label: "Año", icon: <Calendar className="h-4 w-4" />, get: p => String(p.anio), better: "higher" },
     { label: "Kilometraje", icon: <Gauge className="h-4 w-4" />, get: p => p.kilometraje != null ? `${p.kilometraje.toLocaleString()} km` : "N/A", better: "lower" },
@@ -87,10 +81,9 @@ const Compare = () => {
       </Button>
       <h1 className="text-3xl font-bold tracking-tight">Comparar Vehículos</h1>
 
-      {/* Headers */}
       <div className="grid grid-cols-[180px_1fr_1fr] gap-4">
         <div />
-        {vehicles.map((v, i) => (
+        {vehicles.map((v) => (
           <Card key={v.id} className="border-0 shadow-md overflow-hidden">
             <div className="aspect-[16/10] bg-muted">
               {images[String(v.id)] ? <img src={images[String(v.id)]} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Gauge className="h-10 w-10 text-muted-foreground" /></div>}
@@ -103,7 +96,6 @@ const Compare = () => {
         ))}
       </div>
 
-      {/* Comparison rows */}
       <div className="rounded-2xl border border-border overflow-hidden">
         {rows.map((row, ri) => (
           <div key={row.label} className={`grid grid-cols-[180px_1fr_1fr] gap-4 px-4 py-3 ${ri % 2 === 0 ? "bg-muted/30" : ""}`}>
@@ -114,7 +106,6 @@ const Compare = () => {
         ))}
       </div>
 
-      {/* Damage descriptions */}
       <div className="grid grid-cols-2 gap-4">
         {vehicles.map(v => (
           <Card key={v.id} className="border-0 shadow-sm">

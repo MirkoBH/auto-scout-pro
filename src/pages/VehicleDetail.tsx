@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { publicacionesService, imagenesService } from "@/services";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFavorites } from "@/hooks/useFavorites";
 import { Badge } from "@/components/ui/badge";
@@ -28,12 +28,12 @@ const VehicleDetail = () => {
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: p }, { data: imgs }] = await Promise.all([
-        supabase.from("publicaciones").select("*").eq("id", Number(id)).single(),
-        supabase.from("imagenes_publicacion").select("imagen_ids").eq("publicacion_id", String(id)),
+      const [p, imgs] = await Promise.all([
+        publicacionesService.getById(Number(id)),
+        imagenesService.getByPublicacionId(String(id)),
       ]);
       setPub(p);
-      if (imgs && imgs.length > 0) setImages(imgs[0].imagen_ids || []);
+      setImages(imgs);
       setLoading(false);
     };
     load();
@@ -93,7 +93,6 @@ const VehicleDetail = () => {
           <span className="text-3xl font-bold text-primary">${Number(pub.precio).toLocaleString()}</span>
         </div>
 
-        {/* AI Assessment */}
         {pub.estado_vehiculo && (
           <Card className="border-0 shadow-md bg-card overflow-hidden">
             <CardContent className="p-5 space-y-3">

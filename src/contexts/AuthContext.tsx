@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { authService } from "@/services/auth.service";
+import { profileService } from "@/services/profile.service";
 
 type UserType = "Seller" | "Buyer";
 
@@ -24,32 +24,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const fetchUserType = async (userId: string) => {
-    const { data } = await supabase
-      .from("app_users")
-      .select("type")
-      .eq("id", userId)
-      .single();
-    if (data) setUserType(data.type);
+    const type = await profileService.getUserType(userId);
+    if (type) setUserType(type as UserType);
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          setTimeout(() => fetchUserType(session.user.id), 0);
-        } else {
-          setUserType(null);
-        }
-        setLoading(false);
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const subscription = authService.onAuthStateChange((session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) fetchUserType(session.user.id);
+      if (session?.user) {
+        setTimeout(() => fetchUserType(session.user.id), 0);
+      } else {
+        setUserType(null);
+      }
+      setLoading(false);
+    });
+
+    authService.getSession().then(({ session, user }) => {
+      setSession(session);
+      setUser(user);
+      if (user) fetchUserType(user.id);
       setLoading(false);
     });
 
@@ -57,28 +51,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signUp = async (email: string, password: string, type: UserType) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    if (error) throw error;
-    // The trigger sync_auth_user_to_app_users creates the app_users row.
-    // We need to update the type after signup.
-    const { data: { user: newUser } } = await supabase.auth.getUser();
+    await authService.signUp(email, password);
+    const newUser = await authService.getUser();
     if (newUser) {
-      await supabase.from("app_users").update({ type }).eq("id", newUser.id);
+      await profileService.updateUserType(newUser.id, type);
       setUserType(type);
     }
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    await authService.signIn(email, password);
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await authService.signOut();
     setSession(null);
     setUser(null);
     setUserType(null);
