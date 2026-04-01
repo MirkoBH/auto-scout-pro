@@ -41,7 +41,7 @@ export const profileService = {
     return data?.type || null;
   },
 
-  async updateUserType(userId: string, type: string) {
+  async updateUserType(userId: string, type: "Seller" | "Buyer") {
     const { error } = await supabase
       .from("app_users")
       .update({ type })
