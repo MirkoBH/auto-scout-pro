@@ -44,6 +44,80 @@ export type Database = {
         }
         Relationships: []
       }
+      cars: {
+        Row: {
+          ai_damage_summary: string | null
+          ai_price_range: string | null
+          ai_status: string | null
+          brand: string
+          city: string | null
+          created_at: string
+          description: string
+          fuel: string
+          id: string
+          image_urls: string[] | null
+          kilometers: number
+          main_image_url: string | null
+          model: string
+          price: number
+          province: string
+          seller_id: string
+          transmission: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          ai_damage_summary?: string | null
+          ai_price_range?: string | null
+          ai_status?: string | null
+          brand: string
+          city?: string | null
+          created_at?: string
+          description: string
+          fuel: string
+          id?: string
+          image_urls?: string[] | null
+          kilometers: number
+          main_image_url?: string | null
+          model: string
+          price: number
+          province: string
+          seller_id: string
+          transmission: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          ai_damage_summary?: string | null
+          ai_price_range?: string | null
+          ai_status?: string | null
+          brand?: string
+          city?: string | null
+          created_at?: string
+          description?: string
+          fuel?: string
+          id?: string
+          image_urls?: string[] | null
+          kilometers?: number
+          main_image_url?: string | null
+          model?: string
+          price?: number
+          province?: string
+          seller_id?: string
+          transmission?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cars_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       favoritos: {
         Row: {
           created_at: string | null
@@ -198,6 +272,36 @@ export type Database = {
           ubicacion?: string | null
           updated_at?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          password_hash: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          password_hash: string
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          password_hash?: string
+          role?: string
+          updated_at?: string
         }
         Relationships: []
       }
