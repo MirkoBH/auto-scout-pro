@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { publicacionesService, imagenesService } from "@/services";
 import VehicleCard from "@/components/VehicleCard";
 import { useFavorites } from "@/hooks/useFavorites";
 import { Heart } from "lucide-react";
@@ -17,13 +17,13 @@ const Favorites = () => {
     const ids = [...favoriteIds];
     if (ids.length === 0) { setPubs([]); setLoading(false); return; }
     (async () => {
-      const [{ data: p }, { data: imgs }] = await Promise.all([
-        supabase.from("publicaciones").select("*").in("id", ids),
-        supabase.from("imagenes_publicacion").select("publicacion_id, imagen_ids"),
+      const [p, imgs] = await Promise.all([
+        publicacionesService.getByIds(ids),
+        imagenesService.listAll(),
       ]);
-      setPubs(p || []);
+      setPubs(p);
       const map: Record<string, string> = {};
-      (imgs || []).forEach((img: any) => { if (img.imagen_ids?.length > 0) map[img.publicacion_id] = img.imagen_ids[0]; });
+      imgs.forEach((img) => { if (img.imagen_ids?.length > 0) map[img.publicacion_id] = img.imagen_ids[0]; });
       setImageMap(map);
       setLoading(false);
     })();

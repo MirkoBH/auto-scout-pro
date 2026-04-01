@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { storageService } from "@/services";
 import { ImagePlus, X, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -22,15 +22,12 @@ const ImageUpload = ({ userId, onImagesUploaded, existingUrls = [] }: Props) => 
     const newUrls: string[] = [];
 
     for (const file of Array.from(files)) {
-      const ext = file.name.split(".").pop();
-      const path = `${userId}/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage.from("vehiculos").upload(path, file);
-      if (error) {
-        toast({ title: "Error subiendo imagen", description: error.message, variant: "destructive" });
-        continue;
+      try {
+        const url = await storageService.uploadImage(userId, file);
+        newUrls.push(url);
+      } catch (err: any) {
+        toast({ title: "Error subiendo imagen", description: err.message, variant: "destructive" });
       }
-      const { data: urlData } = supabase.storage.from("vehiculos").getPublicUrl(path);
-      newUrls.push(urlData.publicUrl);
     }
 
     const updated = [...urls, ...newUrls];
